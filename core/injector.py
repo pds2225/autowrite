@@ -513,6 +513,145 @@ class BizPlanInjector:
                     zout.write(fpath, arcname)
         return output_path
 
+    # ── 이미지 삽입 ─────────────────────────────────────────────
+    def inject_image(self, keyword: str, image_path: str,
+                     width_cm: float = 10.0, height_cm: float = 7.0,
+                     align: str = "center") -> bool:
+        """
+        keyword를 포함한 헤딩 단락 바로 뒤에 이미지를 삽입.
+
+        이미지를 word/media/에 복사하고, document.xml.rels에 관계를 등록한 뒤
+        <w:drawing> 요소를 body에 삽입합니다.
+
+        Args:
+            keyword:    헤딩 단락에서 찾을 키워드
+            image_path: 삽입할 이미지 파일 경로 (.png / .jpg / .jpeg)
+            width_cm:   이미지 너비 (cm 단위, 기본 10.0)
+            height_cm:  이미지 높이 (cm 단위, 기본 7.0)
+            align:      단락 정렬 ('center' | 'left' | 'right')
+
+        Returns:
+            True — 키워드를 찾아 이미지 삽입 성공
+            False — 키워드를 찾지 못해 건너뜀 / 이미지 파일 없음
+        """
+        if not os.path.exists(image_path):
+            return False
+
+        # ── 이미지 파일을 word/media/에 복사 ──
+        ext = os.path.splitext(image_path)[1].lower()  # .png / .jpg
+        media_dir = os.path.join(self.work_dir, "word", "media")
+        os.makedirs(media_dir, exist_ok=True)
+
+        # 기존 이미지 파일 수 세어 고유 이름 결정
+        existing = [f for f in os.listdir(media_dir) if f.startswith("image")]
+        img_num = len(existing) + 1
+        media_name = f"image{img_num}{ext}"
+        media_dest = os.path.join(media_dir, media_name)
+        shutil.copy2(image_path, media_dest)
+
+        # ── .rels 파일에 관계 추가 ──
+        rels_path = os.path.join(self.work_dir, "word", "_rels", "document.xml.rels")
+        RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+        IMG_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+
+        rels_tree = etree.parse(rels_path)
+        rels_root = rels_tree.getroot()
+
+        # 기존 rId 중 최대값을 구해 새 rId 할당
+        existing_ids = [
+            int(el.get("Id", "rId0").replace("rId", "") or 0)
+            for el in rels_root
+        ]
+        new_rid_num = max(existing_ids, default=0) + 1
+        new_rid = f"rId{new_rid_num}"
+
+        rel_el = etree.SubElement(rels_root, f"{{{RELS_NS}}}Relationship")
+        rel_el.set("Id", new_rid)
+        rel_el.set("Type", IMG_TYPE)
+        rel_el.set("Target", f"media/{media_name}")
+
+        with open(rels_path, "wb") as f:
+            f.write(etree.tostring(rels_tree, xml_declaration=True,
+                                   encoding="UTF-8", standalone=True))
+
+        # ── <w:drawing> 요소 생성 ──
+        # 1 cm = 914400 EMU
+        cx = int(width_cm * 914400)
+        cy = int(height_cm * 914400)
+
+        # 고유 drawing id
+        existing_drawings = self.root.findall(".//{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}docPr")
+        draw_id = len(existing_drawings) + 1
+
+        WP  = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+        A   = "http://schemas.openxmlformats.org/drawingml/2006/main"
+        PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+        R   = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+        inline = etree.Element(f"{{{WP}}}inline")
+        for attr, val in [("distT","0"),("distB","0"),("distL","0"),("distR","0")]:
+            inline.set(attr, val)
+
+        extent = etree.SubElement(inline, f"{{{WP}}}extent")
+        extent.set("cx", str(cx))
+        extent.set("cy", str(cy))
+
+        doc_pr = etree.SubElement(inline, f"{{{WP}}}docPr")
+        doc_pr.set("id", str(draw_id))
+        doc_pr.set("name", f"Image {draw_id}")
+
+        graphic = etree.SubElement(inline, f"{{{A}}}graphic")
+        graphic_data = etree.SubElement(graphic, f"{{{A}}}graphicData")
+        graphic_data.set("uri", PIC)
+
+        pic_el = etree.SubElement(graphic_data, f"{{{PIC}}}pic")
+
+        nvPicPr = etree.SubElement(pic_el, f"{{{PIC}}}nvPicPr")
+        cNvPr = etree.SubElement(nvPicPr, f"{{{PIC}}}cNvPr")
+        cNvPr.set("id", str(draw_id))
+        cNvPr.set("name", f"Image {draw_id}")
+        etree.SubElement(nvPicPr, f"{{{PIC}}}cNvPicPr")
+
+        blipFill = etree.SubElement(pic_el, f"{{{PIC}}}blipFill")
+        blip = etree.SubElement(blipFill, f"{{{A}}}blip")
+        blip.set(f"{{{R}}}embed", new_rid)
+        stretch = etree.SubElement(blipFill, f"{{{A}}}stretch")
+        etree.SubElement(stretch, f"{{{A}}}fillRect")
+
+        spPr = etree.SubElement(pic_el, f"{{{PIC}}}spPr")
+        xfrm = etree.SubElement(spPr, f"{{{A}}}xfrm")
+        off = etree.SubElement(xfrm, f"{{{A}}}off")
+        off.set("x", "0"); off.set("y", "0")
+        ext_el = etree.SubElement(xfrm, f"{{{A}}}ext")
+        ext_el.set("cx", str(cx)); ext_el.set("cy", str(cy))
+        prstGeom = etree.SubElement(spPr, f"{{{A}}}prstGeom")
+        prstGeom.set("prst", "rect")
+        etree.SubElement(prstGeom, f"{{{A}}}avLst")
+
+        # drawing을 감싸는 <w:p> 생성
+        img_para = etree.Element(_w("p"))
+        pPr = etree.SubElement(img_para, _w("pPr"))
+        jc = etree.SubElement(pPr, _w("jc"))
+        jc.set(_w("val"), align)
+        run = etree.SubElement(img_para, _w("r"))
+        drawing = etree.SubElement(run, _w("drawing"))
+        drawing.append(inline)
+
+        # ── 헤딩 단락 위치 찾아 삽입 ──
+        body_list = list(self.body)
+        heading_idx = -1
+        for i, elem in enumerate(body_list):
+            if elem.tag == _w("p") and keyword in para_text(elem):
+                heading_idx = i
+                break
+        if heading_idx == -1:
+            return False
+
+        curr = list(self.body)
+        insert_pos = curr.index(body_list[heading_idx]) + 1
+        self.body.insert(insert_pos, img_para)
+        return True
+
     # ── 메인 실행 ────────────────────────────────────────────────
     def run(self) -> dict:
         """
@@ -566,6 +705,16 @@ class BizPlanInjector:
                 size=item.get("size", 18),
             )
 
-        # 5. 후처리
+        # 5. 이미지 삽입
+        for item in self.content.get("images", []):
+            self.inject_image(
+                keyword=item["keyword"],
+                image_path=item["image_path"],
+                width_cm=item.get("width_cm", 10.0),
+                height_cm=item.get("height_cm", 7.0),
+                align=item.get("align", "center"),
+            )
+
+        # 6. 후처리
         stats = self.clean()
         return stats
