@@ -12,6 +12,8 @@ bizplan_injector/core/injector.py
 수정 이력:
 - [버그1] delete_tables 음수 인덱스 방어 처리 추가 (0 <= i < len 조건)
 - [버그2] inject_after_keyword 섹션 경계 인식 개선 (다음 섹션 헤딩 p태그도 종료 기준으로 처리)
+- [고도화] 서식 보존 주입: set_cell_text/multiline/inject_after_keyword가
+          원본 <w:pPr>·<w:rPr>를 추출·재사용하여 기존 폰트·크기·정렬 유지
 """
 
 import re
@@ -130,42 +132,104 @@ def get_cells(row: etree._Element) -> list:
     return row.findall(_w("tc"), NS)
 
 
+# ── 서식 보존 헬퍼 ───────────────────────────────────────────────
+def _extract_para_style(para: etree._Element):
+    """
+    단락(<w:p>)에서 서식 정보를 추출하여 반환.
+
+    Returns:
+        (pPr_copy, rPr_copy) — 없으면 각각 None
+    """
+    pPr = para.find(_w("pPr"), NS)
+    saved_pPr = copy.deepcopy(pPr) if pPr is not None else None
+
+    saved_rPr = None
+    for r in para.findall(_w("r"), NS):
+        rPr = r.find(_w("rPr"), NS)
+        if rPr is not None:
+            saved_rPr = copy.deepcopy(rPr)
+            break
+
+    return saved_pPr, saved_rPr
+
+
+def _make_styled_para(text: str, pPr: etree._Element = None,
+                      rPr: etree._Element = None) -> etree._Element:
+    """
+    저장된 pPr/rPr 서식을 사용하여 새 단락(<w:p>) 생성.
+
+    텍스트가 있을 때만 <w:r>을 추가합니다.
+    빈 줄("")은 단락만 생성하고 run은 붙이지 않습니다.
+    """
+    p = etree.Element(_w("p"))
+    if pPr is not None:
+        p.append(copy.deepcopy(pPr))
+    if text.strip():
+        r = etree.SubElement(p, _w("r"))
+        if rPr is not None:
+            r.append(copy.deepcopy(rPr))
+        t = etree.SubElement(r, _w("t"))
+        t.text = text
+        if text[0] == " " or text[-1] == " ":
+            t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    return p
+
+
 def set_cell_text(cell: etree._Element, text: str,
                   bold: bool = False, size: int = 18,
                   align: str = "left", color: str = None):
     """
-    셀의 모든 단락을 제거하고 단일 텍스트 단락으로 교체.
+    셀에 단일 텍스트 주입. 원본 셀의 서식(폰트·크기·정렬·들여쓰기)을 보존합니다.
+
+    셀에 기존 단락이 있으면 그 단락의 <w:pPr>·<w:rPr>를 추출하여 재사용하고,
+    기존 단락이 없을 때만 bold/size/align 파라미터로 새 단락을 생성합니다.
 
     Args:
         cell:  대상 <w:tc> 요소
         text:  주입할 텍스트
-        bold:  굵게 여부
-        size:  폰트 크기 (hPt 단위)
-        align: 정렬
-        color: 16진수 색상 코드
+        bold:  굵게 여부 (기존 서식 없을 때만 적용)
+        size:  폰트 크기 (기존 서식 없을 때만 적용)
+        align: 정렬 (기존 서식 없을 때만 적용)
+        color: 색상 코드 (기존 서식 없을 때만 적용)
     """
-    for p in cell.findall(_w("p"), NS):
-        cell.remove(p)
-    cell.append(make_para(text, bold=bold, color=color, size=size, align=align))
+    paras = cell.findall(_w("p"), NS)
+    if paras:
+        # 원본 서식 추출
+        saved_pPr, saved_rPr = _extract_para_style(paras[0])
+        # 모든 단락 제거
+        for p in paras:
+            cell.remove(p)
+        # 보존된 서식으로 새 단락 생성
+        cell.append(_make_styled_para(text, saved_pPr, saved_rPr))
+    else:
+        cell.append(make_para(text, bold=bold, color=color, size=size, align=align))
 
 
 def set_cell_multiline(cell: etree._Element, lines: list,
                        size: int = 18, align: str = "left",
                        bold_first: bool = False):
     """
-    셀에 여러 줄 텍스트를 단락 단위로 주입.
+    셀에 여러 줄 텍스트를 단락 단위로 주입. 원본 셀 서식을 보존합니다.
+
+    셀에 기존 단락이 있으면 첫 번째 단락의 <w:pPr>·<w:rPr>를 템플릿으로 사용합니다.
 
     Args:
         cell:       대상 <w:tc> 요소
         lines:      주입할 텍스트 목록 (각 항목이 별도 단락)
-        size:       폰트 크기 (hPt 단위)
-        align:      정렬
-        bold_first: 첫 번째 줄만 굵게 처리
+        size:       폰트 크기 (기존 서식 없을 때만 적용)
+        align:      정렬 (기존 서식 없을 때만 적용)
+        bold_first: 첫 번째 줄만 굵게 (기존 서식 없을 때만 적용)
     """
-    for p in cell.findall(_w("p"), NS):
-        cell.remove(p)
-    for i, line in enumerate(lines):
-        cell.append(make_para(line, bold=(bold_first and i == 0), size=size, align=align))
+    paras = cell.findall(_w("p"), NS)
+    if paras:
+        saved_pPr, saved_rPr = _extract_para_style(paras[0])
+        for p in paras:
+            cell.remove(p)
+        for line in lines:
+            cell.append(_make_styled_para(line, saved_pPr, saved_rPr))
+    else:
+        for i, line in enumerate(lines):
+            cell.append(make_para(line, bold=(bold_first and i == 0), size=size, align=align))
 
 
 # ── 파란색 안내문구 제거 ─────────────────────────────────────────
@@ -393,14 +457,13 @@ class BizPlanInjector:
             new_row = copy.deepcopy(ref_row)
             cells = get_cells(new_row)
             row_cells = row_data.get("cells", [])
-            aligns = row_data.get("aligns", [])
             for j, val in enumerate(row_cells):
                 if j < len(cells):
-                    align = aligns[j] if j < len(aligns) else "left"
+                    # deepcopy된 셀의 기존 서식을 보존하면서 텍스트만 교체
                     if isinstance(val, list):
-                        set_cell_multiline(cells[j], val, size=size, align=align)
+                        set_cell_multiline(cells[j], val, size=size)
                     else:
-                        set_cell_text(cells[j], str(val), size=size, align=align)
+                        set_cell_text(cells[j], str(val), size=size)
             t.append(new_row)
 
     # ── 단락 주입 ────────────────────────────────────────────────
@@ -447,15 +510,32 @@ class BizPlanInjector:
                     end_idx = j
                     break
 
+        # 삭제 전에 기존 내용 단락에서 서식 템플릿 추출
+        template_pPr = None
+        template_rPr = None
+        for j in range(heading_idx + 1, end_idx):
+            elem = body_list[j]
+            if elem.tag == _w("p") and para_text(elem).strip():
+                pPr, rPr = _extract_para_style(elem)
+                if template_pPr is None and pPr is not None:
+                    template_pPr = pPr
+                if template_rPr is None and rPr is not None:
+                    template_rPr = rPr
+                if template_pPr is not None and template_rPr is not None:
+                    break
+
         for elem in body_list[heading_idx + 1: end_idx]:
             if elem in list(self.body):
                 self.body.remove(elem)
 
-        # 새 내용 삽입
+        # 새 내용 삽입 — 기존 서식 템플릿이 있으면 재사용, 없으면 기본 단락
         curr = list(self.body)
         pos = curr.index(heading_elem) + 1
         for line in reversed(lines):
-            self.body.insert(pos, make_para(line, size=size))
+            if template_pPr is not None or template_rPr is not None:
+                self.body.insert(pos, _make_styled_para(line, template_pPr, template_rPr))
+            else:
+                self.body.insert(pos, make_para(line, size=size))
         return True
 
     def delete_tables(self, indices: list):
