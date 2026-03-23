@@ -1,0 +1,60 @@
+다음 기업정보를 바탕으로 사업계획서 "2-1. 준비현황 및 아이템 소개" 섹션을 작성해주세요.
+
+## 기업정보
+- 기업명: {company_name}
+- 아이템: {item_name}
+- 대표자: {representative}
+
+## 솔루션 정보
+{solution_text}
+
+## 기술 스택
+{tech_stack}
+
+## 개발 현황
+{development_status}
+
+## 팀 역량
+{team_text}
+
+## 보유 자산
+{assets_text}
+
+## 작성 지침
+1. 최소 600자 이상 작성
+2. 구조: 기술 개발 준비 현황 → 시장 검증 현황 → 팀 역량
+3. MVP/프로토타입 개발 완료 증빙 언급
+4. 잠재 고객 인터뷰/테스트 결과 포함
+5. 핵심 Pain Point를 % 수치로 표현
+6. ◦ 기호로 대주제, - 기호로 세부항목
+
+## 출력 형식 (리치 서식)
+lines 배열 항목은 str 또는 dict을 혼용할 수 있습니다.
+- 대주제: {{"text": "◦ 소제목", "bold": true, "indent": 0}}
+- 세부항목: {{"text": "- **핵심어** 내용", "indent": 1}}
+- 세부세부항목: {{"text": "· 내용", "indent": 2}}
+- 빈줄: ""
+
+{{
+  "sections": [
+    {{
+      "keyword": "2-1",
+      "lines": [
+        {{"text": "◦ 기술 개발 준비 현황", "bold": true, "indent": 0}},
+        {{"text": "- **MVP** 개발 현황: ...", "indent": 1}},
+        {{"text": "- **기술 스택**: ...", "indent": 1}},
+        "",
+        {{"text": "◦ 시장 검증 현황", "bold": true, "indent": 0}},
+        {{"text": "- **고객 인터뷰**: ...", "indent": 1}},
+        {{"text": "· 주요 Pain Point: ...", "indent": 2}},
+        "",
+        {{"text": "◦ 팀 역량", "bold": true, "indent": 0}},
+        {{"text": "- **대표자**: ...", "indent": 1}},
+        {{"text": "- **팀원**: ...", "indent": 1}}
+      ],
+      "size": 18
+    }}
+  ]
+}}
+
+JSON만 출력하세요.

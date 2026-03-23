@@ -1,0 +1,55 @@
+다음 기업정보를 바탕으로 사업계획서 "3-1. 비즈니스 모델" 섹션을 작성해주세요.
+
+## 기업정보
+- 기업명: {company_name}
+- 아이템: {item_name}
+- 업종: {business_type}
+
+## 비즈니스 모델
+{business_model_text}
+
+## 시장 데이터
+- TAM: {tam_value}
+- SAM: {sam_value}
+- SOM: {som_value}
+
+## 작성 지침
+1. 최소 800자 이상 작성
+2. 구조: 수익 구조 → 단위 경제(Unit Economics) → 연차별 매출 추정
+3. 수익원별 비중(%)을 포함
+4. CAC, ARPU, LTV, LTV/CAC 등 SaaS 핵심 지표 포함
+5. 연차별(1년차~3년차) 매출 추정과 손익분기점 명시
+6. ◦ 기호로 대주제, - 기호로 세부항목
+
+## 출력 형식 (리치 서식)
+lines 배열 항목은 str 또는 dict을 혼용할 수 있습니다.
+- 대주제: {{"text": "◦ 소제목", "bold": true, "indent": 0}}
+- 세부항목: {{"text": "- **핵심지표**: 수치", "indent": 1}}
+- 빈줄: ""
+
+{{
+  "sections": [
+    {{
+      "keyword": "3-1",
+      "lines": [
+        {{"text": "◦ 수익 구조", "bold": true, "indent": 0}},
+        {{"text": "- **구독료**: 월 XX만원 — 비중 XX%", "indent": 1}},
+        {{"text": "- **서비스료**: ... — 비중 XX%", "indent": 1}},
+        "",
+        {{"text": "◦ 단위 경제 (Unit Economics)", "bold": true, "indent": 0}},
+        {{"text": "- **CAC**: XX만원", "indent": 1}},
+        {{"text": "- **ARPU**: XX만원", "indent": 1}},
+        {{"text": "- **LTV**: XX만원", "indent": 1}},
+        {{"text": "- **LTV/CAC**: XX배", "indent": 1}},
+        "",
+        {{"text": "◦ 연차별 매출 추정", "bold": true, "indent": 0}},
+        {{"text": "- **1년차**: ...", "indent": 1}},
+        {{"text": "- **2년차**: ... (**손익분기점** 달성)", "indent": 1}},
+        {{"text": "- **3년차**: ...", "indent": 1}}
+      ],
+      "size": 18
+    }}
+  ]
+}}
+
+JSON만 출력하세요.

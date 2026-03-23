@@ -22,6 +22,8 @@ import copy
 import json
 from lxml import etree
 
+from .rich_formatter import line_to_para
+
 
 # ── XML 네임스페이스 ──────────────────────────────────────────────
 WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -414,8 +416,11 @@ class BizPlanInjector:
 
         Args:
             keyword: 헤딩 단락에서 찾을 키워드 문자열
-            lines:   주입할 텍스트 줄 목록
-            size:    폰트 크기 (hPt 단위)
+            lines:   주입할 줄 목록. 각 항목은 str 또는 dict:
+                     - str: 기존 방식 (하위 호환)
+                     - dict: {"text": "...", "bold": false, "indent": 1, "size": 18, "color": "..."}
+                       "text"에 **bold** 인라인 마크업 사용 가능
+            size:    섹션 기본 폰트 크기 (hPt 단위). 각 라인 dict의 "size"로 override 가능
 
         Returns:
             True  — 키워드를 찾아 주입 성공
@@ -451,11 +456,12 @@ class BizPlanInjector:
             if elem in list(self.body):
                 self.body.remove(elem)
 
-        # 새 내용 삽입
+        # 새 내용 삽입: str/dict 모두 line_to_para로 처리 (Phase 2 리치 서식)
         curr = list(self.body)
         pos = curr.index(heading_elem) + 1
         for line in reversed(lines):
-            self.body.insert(pos, make_para(line, size=size))
+            para = line_to_para(line, default_size=size)
+            self.body.insert(pos, para)
         return True
 
     def delete_tables(self, indices: list):
