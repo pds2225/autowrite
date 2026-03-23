@@ -22,23 +22,31 @@
 5. 마지막에 목표 KPI 요약
 6. ◦ 기호로 대주제, - 기호로 세부항목
 
-## 출력 형식
+## 출력 형식 (리치 서식)
+lines 배열 항목은 str 또는 dict을 혼용할 수 있습니다.
+- 대주제: {{"text": "◦ 소제목", "bold": true, "indent": 0}}
+- Phase 헤더: {{"text": "【 Phase N 】", "bold": true, "indent": 0}}
+- 세부항목: {{"text": "- **핵심어**: 내용", "indent": 1}}
+- 빈줄: ""
+
 {{
   "sections": [
     {{
       "keyword": "3-2",
       "lines": [
-        "◦ Go-to-Market 전략",
+        {{"text": "◦ Go-to-Market 전략", "bold": true, "indent": 0}},
         "",
-        "【 Phase 1 (0~6개월): 무료 베타 + 레퍼런스 확보 】",
-        "- 활동...",
+        {{"text": "【 Phase 1 (0~6개월): 무료 베타 + 레퍼런스 확보 】", "bold": true, "indent": 0}},
+        {{"text": "- **핵심 활동**: ...", "indent": 1}},
+        {{"text": "- **채널**: ...", "indent": 1}},
+        {{"text": "- **KPI**: ...", "indent": 1}},
         "",
-        "【 Phase 2 (6~12개월): 유료 전환 】",
-        "- 활동...",
+        {{"text": "【 Phase 2 (6~12개월): 유료 전환 】", "bold": true, "indent": 0}},
+        {{"text": "- **핵심 활동**: ...", "indent": 1}},
+        {{"text": "- **목표 고객사**: ...", "indent": 1}},
         "",
-        "【 Phase 3 (12~24개월): 스케일업 】",
-        "- 활동...",
-        "- 목표 KPI: ..."
+        {{"text": "【 Phase 3 (12~24개월): 스케일업 】", "bold": true, "indent": 0}},
+        {{"text": "- **목표 KPI**: ...", "indent": 1}}
       ],
       "size": 18
     }}

@@ -22,23 +22,34 @@
 5. ◦ 기호로 대주제, - 기호로 세부항목
 6. 마지막에 "→ 가격 경쟁력 + 즉시성 + 통합 서비스로 차별화" 형태 결론
 
-## 출력 형식
+## 출력 형식 (리치 서식)
+lines 배열 항목은 str 또는 dict을 혼용할 수 있습니다.
+- 대주제: {{"text": "◦ 소제목", "bold": true, "indent": 0}}
+- 세부항목: {{"text": "- **핵심어** 내용", "indent": 1}}
+- 결론: {{"text": "→ 결론", "bold": true, "indent": 0}}
+- 빈줄: ""
+
 {{
   "sections": [
     {{
       "keyword": "1-2",
       "lines": [
-        "◦ 목표시장 정의",
-        "- 1차 목표: ...",
+        {{"text": "◦ 목표시장 정의", "bold": true, "indent": 0}},
+        {{"text": "- **1차 목표**: ...", "indent": 1}},
         "",
-        "◦ 시장 규모 (TAM/SAM/SOM)",
-        "- TAM: ...",
-        "- SAM: ...",
-        "- SOM: ...",
+        {{"text": "◦ 시장 규모 (TAM/SAM/SOM)", "bold": true, "indent": 0}},
+        {{"text": "- **TAM**: ...", "indent": 1}},
+        {{"text": "- **SAM**: ...", "indent": 1}},
+        {{"text": "- **SOM**: ...", "indent": 1}},
         "",
-        "◦ 경쟁 우위",
-        "| 구분 | 경쟁사1 | 경쟁사2 | {company_name} |",
-        "→ 결론"
+        {{"text": "◦ 경쟁사 비교", "bold": true, "indent": 0}},
+        {{"text": "- 경쟁사1: ...", "indent": 1}},
+        {{"text": "- 경쟁사2: ...", "indent": 1}},
+        "",
+        {{"text": "◦ {company_name} 경쟁 우위", "bold": true, "indent": 0}},
+        {{"text": "- 우위요소1", "indent": 1}},
+        "",
+        {{"text": "→ 결론", "bold": true, "indent": 0}}
       ],
       "size": 18
     }}
