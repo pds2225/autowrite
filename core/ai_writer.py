@@ -411,15 +411,19 @@ def generate_content(
     profile: dict,
     api_key: str = None,
     model: str = DEFAULT_MODEL,
+    charts: bool = False,
+    charts_dir: str = "output/charts",
 ) -> dict:
     """
     기업정보를 바탕으로 content.json 전체를 AI로 생성한다.
     섹션별로 개별 LLM 호출을 수행한다.
 
     Args:
-        profile: 기업정보 dict (company_profile.yaml 로딩 결과)
-        api_key: Anthropic API 키 (None이면 환경변수 사용)
-        model: Claude 모델명
+        profile:    기업정보 dict (company_profile.yaml 로딩 결과)
+        api_key:    Anthropic API 키 (None이면 환경변수 사용)
+        model:      Claude 모델명
+        charts:     True이면 차트 자동 생성 후 images 섹션에 추가 (Phase 3)
+        charts_dir: 차트 PNG 저장 디렉토리 (charts=True일 때 사용)
 
     Returns:
         content.json 호환 dict
@@ -443,6 +447,7 @@ def generate_content(
         "table_cells": [],
         "table_rows": [],
         "sections": [],
+        "images": [],
     }
 
     # === 호출 1: 과제개요 표 (table_cells) ===
@@ -503,6 +508,17 @@ def generate_content(
             print(f"  ✅ {label} 완료")
         except RuntimeError as e:
             print(f"  ❌ {label} 실패: {e}")
+
+    # === Phase 3: 차트 자동 생성 ===
+    if charts:
+        print("\n  📊 [Phase 3] 차트 자동 생성 중...")
+        try:
+            from .chart_generator import generate_all_charts
+            image_specs = generate_all_charts(profile, output_dir=charts_dir)
+            content["images"].extend(image_specs)
+            print(f"  ✅ 차트 생성 완료: {len(image_specs)}개")
+        except Exception as e:
+            print(f"  ❌ 차트 생성 실패: {e}")
 
     return content
 

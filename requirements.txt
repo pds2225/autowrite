@@ -2,3 +2,4 @@ lxml>=4.9.0
 python-docx>=0.8.11
 anthropic>=0.39.0
 pyyaml>=6.0
+matplotlib>=3.7.0

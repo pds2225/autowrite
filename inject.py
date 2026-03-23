@@ -57,8 +57,16 @@ def main():
     parser.add_argument("--profile",   "-p", help="기업정보 파일 경로 (YAML/JSON)")
     parser.add_argument("--api-key",   help="Anthropic API 키 (미지정 시 ANTHROPIC_API_KEY 환경변수 사용)")
     parser.add_argument("--model",     default=None, help="Claude 모델명 (기본: claude-sonnet-4-20250514)")
+    parser.add_argument("--charts",    action="store_true", help="Phase 3: AI 모드에서 차트 자동 생성 후 DOCX에 삽입 (matplotlib 필요)")
+    parser.add_argument("--charts-dir", default="output/charts", help="차트 PNG 저장 디렉토리 (기본: output/charts)")
+    parser.add_argument("--charts-only", action="store_true", help="차트만 생성 (DOCX 주입 없이). --profile 필요")
 
     args = parser.parse_args()
+
+    # ── 차트 단독 생성 모드 ────────────────────────────────────
+    if args.charts_only:
+        _run_charts_only(args)
+        return
 
     # ── 분석 모드 ──────────────────────────────────────────────
     if args.analyze:
@@ -156,6 +164,9 @@ def _run_ai_generate(args):
     kwargs = {"profile": profile, "api_key": api_key}
     if args.model:
         kwargs["model"] = args.model
+    if args.charts:
+        kwargs["charts"] = True
+        kwargs["charts_dir"] = args.charts_dir
     content = generate_content(**kwargs)
 
     # 저장
@@ -166,10 +177,12 @@ def _run_ai_generate(args):
     n_cells = len(content.get("table_cells", []))
     n_rows = len(content.get("table_rows", []))
     n_sections = len(content.get("sections", []))
+    n_images = len(content.get("images", []))
     print(f"\n✅ AI 생성 완료!")
     print(f"  table_cells: {n_cells}개")
     print(f"  table_rows:  {n_rows}개")
     print(f"  sections:    {n_sections}개")
+    print(f"  images:      {n_images}개")
     print(f"  저장 위치:   {output_path}")
 
 
@@ -212,6 +225,9 @@ def _run_ai_inject(args):
     kwargs = {"profile": profile, "api_key": api_key}
     if args.model:
         kwargs["model"] = args.model
+    if args.charts:
+        kwargs["charts"] = True
+        kwargs["charts_dir"] = args.charts_dir
     content = generate_content(**kwargs)
 
     # DOCX 주입
@@ -233,6 +249,32 @@ def _run_ai_inject(args):
     print(f"  파란 안내문구 제거: {stats['blue_removed']}개")
     print(f"  빈 단락 정리: {stats['empty_paras_removed']}개")
     print(f"  저장 위치: {output_path}")
+
+
+def _run_charts_only(args):
+    """
+    차트 단독 생성 모드: 기업정보에서 차트 PNG만 생성한다 (DOCX 주입 없이).
+    """
+    from core import load_company_profile, get_profile_summary
+    from core.chart_generator import generate_all_charts
+
+    if not args.profile:
+        print("❌ --charts-only 모드에는 --profile 인수가 필요합니다")
+        sys.exit(1)
+    if not os.path.exists(args.profile):
+        print(f"❌ 기업정보 파일 없음: {args.profile}")
+        sys.exit(1)
+
+    profile = load_company_profile(args.profile)
+    print(f"\n📊 차트 생성 시작")
+    print(f"  기업정보: {get_profile_summary(profile)}")
+    print(f"  저장 위치: {args.charts_dir}")
+
+    image_specs = generate_all_charts(profile, output_dir=args.charts_dir)
+
+    print(f"\n✅ 차트 생성 완료: {len(image_specs)}개")
+    for spec in image_specs:
+        print(f"  {spec['_label']}: {spec['image_path']}")
 
 
 def _load_dotenv():
