@@ -1,0 +1,9 @@
+[
+  {
+    "category": "table",
+    "message": "표 2: 병합셀 구조 복잡, 수동 확인 필요",
+    "context": {
+      "table_index": 2
+    }
+  }
+]
