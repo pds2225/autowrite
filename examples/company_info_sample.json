@@ -1,0 +1,144 @@
+{
+  "_comment": "AI 콘텐츠 생성용 기업 정보 샘플 — inject.py --generate 와 함께 사용",
+  "company_name": "마켓게이트",
+  "business_item": "AI·데이터 기반 수출지원 One-Stop 플랫폼",
+  "industry": "AI SaaS / 수출지원 지식서비스",
+  "previous_business": "중소기업 경영컨설팅",
+  "closure_reason": "노동집약적 사업구조, 일회성 수익모델로 인한 매출 부진",
+  "closure_history": [
+    {
+      "company": "밸류업파트너스",
+      "period": "2022.11~2025.11",
+      "item": "경영컨설팅 (중소기업/수출기업)",
+      "reason": "매출부진"
+    },
+    {
+      "company": "디앤와이경영컨설팅",
+      "period": "2021.01~2022.02",
+      "item": "경영컨설팅 (중소기업/수출기업)",
+      "reason": "매출부진"
+    }
+  ],
+  "solution_overview": "SaaS 기반 AI/데이터 활용 수출지원 플랫폼으로 구독형 수익구조 확보",
+  "target_market": "연매출 10억 이하 수출 중소기업",
+  "market_problem": "수출 데이터 파편화, AI 도입률 저조, 정부지원 실효성 부족",
+  "solution_steps": [
+    "수출국가 추천 및 제재국 필터링",
+    "저품질·저적합 바이어 필터링 (FitScore)",
+    "수출 수익성 검증 시뮬레이션",
+    "자동계약서 생성(RPA) 및 체결"
+  ],
+  "tam": "5,370억원 (중소기업 9.8만개 × 월 구독료 29만원 + 협력수익 200만원)",
+  "sam": "1,644억원 (예상 수요기업 30,000개 기준)",
+  "som": "38억원 (Y3 구독 700개사, SAM 대비 2.3%)",
+  "competitors": "공공: KOTRA, 무역협회 등 단순 정보 제공. 민간: 수출 일부 기능만 보유, 파편화",
+  "ip_status": "특허 1건 출원 (10-2026-0026207, 2026.02.10.) - HS 코드 기반 수출 유망국가 추천 시스템",
+  "partnerships": [
+    {"name": "루살카 외 11개사", "type": "수출 기업", "cooperation": "파일럿 테스트 진행"},
+    {"name": "연세대 창업지원단 외 7개사", "type": "기업 보육 기관", "cooperation": "서비스 실증 및 확산"},
+    {"name": "어나더브레인 외 1개사", "type": "투자사(VC, AC)", "cooperation": "투자유치 가능성 검토"},
+    {"name": "DIG(DOAN INTERNATIONAL GROUP)", "type": "베트남 현지 컨설팅사", "cooperation": "해외 실증 지원"},
+    {"name": "한국경영기술지도사회 외 1개사", "type": "수출 지원사업 운영기관", "cooperation": "테스트 기업 모집 지원"}
+  ],
+  "pilot_status": "10개사 이상 파일럿 테스트 진행예정 중소기업 확보",
+  "prototype_status": "MVP 개발완료 (GitHub 계정 및 메인코드), Streamlit 프로토타입 v0.1",
+  "tech_stack": "FastAPI, React, Python, Streamlit, AWS/GCP",
+  "current_dev_status": "Phase 1 핵심 데이터 인프라 구축 완료",
+  "key_features": [
+    "5종 글로벌 API 통합 데이터 파이프라인",
+    "ISO3 표준화 엔진",
+    "HS코드 매칭 AI 엔진",
+    "FitScore 바이어 매칭 시스템",
+    "Landed Cost 수익성 시뮬레이션"
+  ],
+  "dev_phases": [
+    {
+      "phase": 1,
+      "name": "핵심 데이터 인프라 및 추천 엔진",
+      "period": "'26.01 구축 완료",
+      "details": ["5종 글로벌 API 통합 데이터 파이프라인·ISO3 표준화 엔진 구축"]
+    },
+    {
+      "phase": 2,
+      "name": "바이어 매칭 및 필터링 고도화",
+      "period": "'26.05 예정, 협약 기간 내",
+      "details": ["FitScore 정밀 바이어 매칭 시스템(제재·품목 규제·MOQ·인증) 필터링"]
+    },
+    {
+      "phase": 3,
+      "name": "수익성 시뮬레이션 및 수출 계약체결",
+      "period": "후속 지원사업 활용",
+      "details": [
+        "Landed Cost 기반 수익성 시뮬레이션",
+        "수출계약서 자동 생성(RPA)"
+      ]
+    }
+  ],
+  "revenue_model": "B2B SaaS 구독 + 협력사 연계 수수료",
+  "subscription_plans": [
+    {"name": "Basic", "price": "월 9.9만원", "features": "국가추천 + 시장리포트(월 5건)"},
+    {"name": "Pro", "price": "월 29.9만원", "features": "Basic + 바이어 매칭 + 관세·인증 무제한"}
+  ],
+  "partnership_revenue": "수출 단계별 협력사 연계 매출 (관세, 물류, 법무 등)",
+  "pricing": "구독 + 성공보수 하이브리드 모델",
+  "marketing_plan": "수출바우처 수행기관 등록, SEO/콘텐츠 마케팅, 웨비나",
+  "sales_channels": "공공(수출바우처), 민간제휴(관세법인/물류사), 직접(온라인)",
+  "go_to_market": "무료 베타 30개사 → 유료 전환 → B2B 파트너십 확장",
+  "target_customers": "연매출 10억 이하 수출 중소기업, 수출 초보 기업",
+  "ceo_info": {
+    "name": "예비재창업자",
+    "education": "석사 경영컨설팅 (25.08 졸업)",
+    "career": "경영컨설팅 대표 3년, 금융권 기업대출/투자금융 5년",
+    "certifications": "경영지도사 (중소벤처기업부), 스타트업 AC 심사역",
+    "strengths": "수출 컨설턴트 경험 + AI 서비스 기획/바이브코딩 역량"
+  },
+  "team_members": [
+    {
+      "role": "백엔드 개발자 (팀장급)",
+      "status": "채용 예정",
+      "description": "백엔드 개발 경력 7년 이상, AI 서비스 개발 경력 2년 보유"
+    },
+    {
+      "role": "프론트엔드 개발자 (팀원급)",
+      "status": "채용 예정",
+      "description": "SaaS 기반 AI 서비스 기획·설계·개발·운영 경험 보유 풀스택 개발자"
+    },
+    {
+      "role": "경영지원·어드민 (팀원급)",
+      "status": "채용 예정",
+      "description": "행정업무/정산시스템 활용 경력 1년"
+    }
+  ],
+  "current_employees": 0,
+  "hiring_plan": [
+    {"title": "팀장(채용 예정)", "role": "백엔드 개발", "requirements": "백엔드 개발경력 7년, AI 서비스 개발경력 2년"},
+    {"title": "팀원(채용 예정)", "role": "프론트엔드 개발", "requirements": "SaaS AI 백/프론트엔드 개발 및 운영 경력 2년"},
+    {"title": "팀원(채용 예정)", "role": "경영지원·어드민", "requirements": "행정업무/정산시스템 활용 경력 1년"}
+  ],
+  "hiring_timeline": "협약기간 내 (2026.04~10)",
+  "agreement_period": "'26.4월~10월",
+  "monthly_milestones": [
+    {"task": "초기 고객 검증 설계 - 테스트 기업 모집 및 베타 준비", "period": "'26.04"},
+    {"task": "PMF 검증 - 베타 20~30개사 운영 및 기능 개선", "period": "'26.05"},
+    {"task": "유료화 구조 설계 - Basic/Pro 플랜 확정 및 결제 시스템 구축", "period": "'26.06"},
+    {"task": "매출 발생 구조 구축 - 유료 고객 10개사 확보·수출바우처 등록", "period": "'26.07"},
+    {"task": "B2B 리드 확보 - 웨비나 개최 및 리드 DB 구축", "period": "'26.08"},
+    {"task": "제휴 확장 - 관세법인·물류사 제휴 체결 확장", "period": "'26.09"},
+    {"task": "성과 고도화·투자 준비 - 전환율 분석 및 투자 준비", "period": "'26.10"}
+  ],
+  "total_budget": "134,340,000원",
+  "gov_support": "100,000,000원",
+  "self_fund_cash": "7,670,000원",
+  "self_fund_inkind": "26,670,000원",
+  "budget_items": [
+    {"category": "외주용역비", "detail": "개발비 백엔드, 프론트엔드", "amount": "20,000,000원"},
+    {"category": "인건비(백엔드)", "detail": "1명 x 3개월 x 4,800,000원", "amount": "14,400,000원"},
+    {"category": "인건비(프론트)", "detail": "1명 x 3개월 x 3,500,000원", "amount": "10,500,000원"},
+    {"category": "인건비(어드민)", "detail": "1명 x 6개월 x 2,300,000원", "amount": "13,800,000원"},
+    {"category": "인건비(대표자)", "detail": "1명 x 7개월 x 3,810,000원", "amount": "26,670,000원 (현물)"},
+    {"category": "기계장치 구입비", "detail": "PC SET 등", "amount": "21,500,000원"},
+    {"category": "무형자산 취득비", "detail": "특허출원 2건 x 2,235,000원", "amount": "4,470,000원"},
+    {"category": "상표출원", "detail": "2건 x 500,000원", "amount": "1,000,000원"},
+    {"category": "광고선전비", "detail": "마케팅대행료 + 홈페이지 제작", "amount": "22,000,000원"}
+  ]
+}

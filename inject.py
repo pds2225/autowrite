@@ -6,6 +6,7 @@ inject.py  —  사업계획서 자동 주입 CLI
     python inject.py --template template.docx --content content.json --output output.docx
     python inject.py --analyze template.docx
     python inject.py --skeleton template.docx
+    python inject.py --generate company_info.json --base content.json --output ai_content.json
 """
 
 import argparse
@@ -25,6 +26,7 @@ def main():
     실행 모드:
       --analyze  DOCX   : 표·단락 구조를 분석하여 콘솔에 출력
       --skeleton DOCX   : content.json 스켈레톤 파일 자동 생성
+      --generate JSON   : AI로 사업계획서 콘텐츠 생성 (기업정보 JSON 입력)
       --template + --content : JSON 내용을 양식 DOCX에 주입하여 출력
 
     종료 코드:
@@ -39,6 +41,7 @@ def main():
   python inject.py --template template.docx --content content.json
   python inject.py --analyze template.docx
   python inject.py --skeleton template.docx --output content_skeleton.json
+  python inject.py --generate company_info.json --base content.json --output ai_content.json
         """,
     )
     parser.add_argument("--template",  "-t", help="원본 양식 DOCX 파일 경로")
@@ -46,13 +49,18 @@ def main():
     parser.add_argument("--output",    "-o", help="출력 파일 경로 (기본: output/결과.docx)")
     parser.add_argument("--analyze",   "-a", metavar="DOCX", help="DOCX 구조 분석 (표/단락 목록 출력)")
     parser.add_argument("--skeleton",  "-s", metavar="DOCX", help="content.json 스켈레톤 자동 생성")
+    parser.add_argument("--generate",  "-g", metavar="JSON", help="AI 콘텐츠 생성 (기업정보 JSON)")
+    parser.add_argument("--base",      "-b", help="기존 content.json (표 데이터 유지용, --generate와 함께 사용)")
+    parser.add_argument("--api-key",   help="Anthropic API 키 (기본: ANTHROPIC_API_KEY 환경변수)")
+    parser.add_argument("--model",     help="AI 모델 ID (기본: claude-sonnet-4-20250514)")
+    parser.add_argument("--temperature", type=float, help="AI 생성 온도 (기본: 0.3)")
 
     args = parser.parse_args()
 
     # ── 분석 모드 ──────────────────────────────────────────────
     if args.analyze:
         if not os.path.exists(args.analyze):
-            print(f"❌ 파일 없음: {args.analyze}")
+            print(f"파일 없음: {args.analyze}")
             sys.exit(1)
         analyze_docx(args.analyze, verbose=True)
         return
@@ -60,10 +68,38 @@ def main():
     # ── 스켈레톤 생성 모드 ─────────────────────────────────────
     if args.skeleton:
         if not os.path.exists(args.skeleton):
-            print(f"❌ 파일 없음: {args.skeleton}")
+            print(f"파일 없음: {args.skeleton}")
             sys.exit(1)
         out = args.output or "content_skeleton.json"
         generate_content_skeleton(args.skeleton, out)
+        return
+
+    # ── AI 콘텐츠 생성 모드 ───────────────────────────────────
+    if args.generate:
+        if not os.path.exists(args.generate):
+            print(f"파일 없음: {args.generate}")
+            sys.exit(1)
+
+        try:
+            from core import HAS_AI_WRITER
+            if not HAS_AI_WRITER:
+                raise ImportError
+            from core.ai_writer import generate_from_company_info
+        except ImportError:
+            print("AI 생성 기능을 사용하려면 anthropic 패키지를 설치하세요:")
+            print("  pip install anthropic")
+            sys.exit(1)
+
+        output_path = args.output or "output/ai_content.json"
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+        generate_from_company_info(
+            company_info_path=args.generate,
+            base_content_path=args.base,
+            output_path=output_path,
+            api_key=args.api_key,
+            verbose=True,
+        )
         return
 
     # ── 주입 모드 ──────────────────────────────────────────────
@@ -72,10 +108,10 @@ def main():
         sys.exit(1)
 
     if not os.path.exists(args.template):
-        print(f"❌ 템플릿 파일 없음: {args.template}")
+        print(f"템플릿 파일 없음: {args.template}")
         sys.exit(1)
     if not os.path.exists(args.content):
-        print(f"❌ 내용 파일 없음: {args.content}")
+        print(f"내용 파일 없음: {args.content}")
         sys.exit(1)
 
     # 출력 경로
@@ -85,7 +121,7 @@ def main():
         os.makedirs("output", exist_ok=True)
         output_path = f"output/{base}_완성.docx"
 
-    print(f"\n🚀 사업계획서 자동 주입 시작")
+    print(f"\n사업계획서 자동 주입 시작")
     print(f"  템플릿: {args.template}")
     print(f"  내용:   {args.content}")
     print(f"  출력:   {output_path}")
@@ -96,7 +132,7 @@ def main():
     inj.save(output_path)
 
     size = os.path.getsize(output_path)
-    print(f"\n✅ 완성!")
+    print(f"\n완성!")
     print(f"  파일 크기: {size:,} bytes ({size // 1024} KB)")
     print(f"  파란 안내문구 제거: {stats['blue_removed']}개")
     print(f"  빈 단락 정리: {stats['empty_paras_removed']}개")
