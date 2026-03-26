@@ -5,5 +5,4 @@ __pycache__/
 /tmp/
 output/*.docx
 output/*.json
-templates/*.docx
 .env
