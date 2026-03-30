@@ -11,6 +11,7 @@ inject.py  —  사업계획서 자동 주입 CLI
 """
 
 import argparse
+import glob
 import sys
 import os
 
@@ -18,6 +19,16 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from core import BizPlanInjector, analyze_docx, generate_content_skeleton
+
+
+def _cleanup_old_docx(output_path: str):
+    """output/ 폴더의 기존 *.docx 파일을 삭제한다 (새로 저장할 파일 제외)."""
+    output_dir = os.path.dirname(output_path) or "output"
+    existing = glob.glob(os.path.join(output_dir, "*.docx"))
+    for f in existing:
+        if os.path.abspath(f) != os.path.abspath(output_path):
+            os.remove(f)
+            print(f"  🗑️  구버전 삭제: {f}")
 
 
 def main():
@@ -122,6 +133,7 @@ def main():
     inj = BizPlanInjector(args.template)
     inj.load_content(args.content)
     stats = inj.run()
+    _cleanup_old_docx(output_path)
     inj.save(output_path)
 
     size = os.path.getsize(output_path)
@@ -241,6 +253,7 @@ def _run_ai_inject(args):
     inj = BizPlanInjector(args.template)
     inj.set_content(content)
     stats = inj.run()
+    _cleanup_old_docx(output_path)
     inj.save(output_path)
 
     size = os.path.getsize(output_path)
