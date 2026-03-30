@@ -1,3 +1,4 @@
 lxml>=4.9.0
 python-docx>=0.8.11
 anthropic>=0.40.0
+pytest>=7.0
