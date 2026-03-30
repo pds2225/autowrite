@@ -34,8 +34,15 @@ BLUE_COLORS = {
     "2f5496","215868","1f5c8b",
 }
 
-# 섹션 헤딩 패턴: "숫자-숫자" 형식 (예: 1-1, 2-3, 4-1-1)
-_SECTION_HEADING_RE = re.compile(r"\d+\s*[-–]\s*\d+")
+# 섹션 헤딩 패턴: 단락이 "숫자-숫자"로 시작하고 짧아야 실제 헤딩으로 판정
+# 예) "1-1", "2 -3", "4-1-1" → 헤딩 O
+# 예) "수출국가 1-2개", "성공률 30-40%" → 헤딩 X (앞에 다른 문자 있음)
+_SECTION_HEADING_RE = re.compile(r"^\d+\s*[-–]\s*\d+")
+
+
+def _normalize_kw(s: str) -> str:
+    """키워드 정규화: 대시 전후 공백 제거, 소문자화."""
+    return re.sub(r"\s*[-–]\s*", "-", s).strip().lower()
 
 
 # ── 저수준 XML 헬퍼 ──────────────────────────────────────────────
@@ -429,8 +436,9 @@ class BizPlanInjector:
         body_list = list(self.body)
         heading_elem = None
         heading_idx = -1
+        kw_norm = _normalize_kw(keyword)
         for i, elem in enumerate(body_list):
-            if elem.tag == _w("p") and keyword in para_text(elem):
+            if elem.tag == _w("p") and kw_norm in _normalize_kw(para_text(elem)):
                 heading_elem = elem
                 heading_idx = i
                 break
@@ -646,8 +654,9 @@ class BizPlanInjector:
         # ── 헤딩 단락 위치 찾아 삽입 ──
         body_list = list(self.body)
         heading_idx = -1
+        kw_norm = _normalize_kw(keyword)
         for i, elem in enumerate(body_list):
-            if elem.tag == _w("p") and keyword in para_text(elem):
+            if elem.tag == _w("p") and kw_norm in _normalize_kw(para_text(elem)):
                 heading_idx = i
                 break
         if heading_idx == -1:
