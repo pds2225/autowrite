@@ -34,10 +34,32 @@ BLUE_COLORS = {
     "2f5496","215868","1f5c8b",
 }
 
-# 섹션 헤딩 패턴: 단락이 "숫자-숫자"로 시작하고 짧아야 실제 헤딩으로 판정
-# 예) "1-1", "2 -3", "4-1-1" → 헤딩 O
-# 예) "수출국가 1-2개", "성공률 30-40%" → 헤딩 X (앞에 다른 문자 있음)
-_SECTION_HEADING_RE = re.compile(r"^\d+\s*[-–]\s*\d+")
+# 섹션 헤딩 판별용 패턴
+# ① 줄 시작이 숫자-숫자: "1-1 문제인식", "3-3-3 자금계획"
+_HEADING_START = re.compile(r"^\s*\d+\s*[-–]\s*\d+")
+# ② 짧은 줄(≤20자) 속 숫자-숫자: "가. 1-2", "① 2-1 현황"
+_HEADING_INNER = re.compile(r"\d+\s*[-–]\s*\d+")
+# ③ 숫자범위 표현: "1-2개", "30-40%", "2-3억", "1-2년" 등 (본문에서 흔함)
+_RANGE_EXPR = re.compile(r"\d+\s*[-–]\s*\d+[개건명년월일억만조백%]")
+
+
+def _is_section_boundary(txt: str) -> bool:
+    """
+    단락 텍스트가 다음 섹션의 헤딩인지 판별한다.
+
+    판별 기준:
+    1. 단락이 '숫자-숫자' 패턴으로 시작 → 헤딩 (접두 공백 허용)
+    2. 짧은 단락(≤20자) + '숫자-숫자' 포함 + 단위 없음 → 헤딩 가능성
+       "수출국가 1-2개" → _RANGE_EXPR 제외 → 헤딩 X
+       "가. 1-2" / "① 2-1 현황" → 짧고 단위 없음 → 헤딩 O
+    """
+    if not txt:
+        return False
+    if _HEADING_START.search(txt):
+        return True
+    if _RANGE_EXPR.search(txt):   # 단위 붙은 숫자 범위 → 본문
+        return False
+    return len(txt) <= 20 and bool(_HEADING_INNER.search(txt))
 
 
 def _normalize_kw(s: str) -> str:
@@ -453,10 +475,10 @@ class BizPlanInjector:
             if elem.tag == _w("tbl"):
                 end_idx = j
                 break
-            # 종료 조건 2: 다음 섹션 헤딩 단락 (숫자-숫자 패턴)  ← [버그2 수정]
+            # 종료 조건 2: 다음 섹션 헤딩 단락 (숫자-숫자 패턴)
             if elem.tag == _w("p"):
                 txt = para_text(elem).strip()
-                if txt and _SECTION_HEADING_RE.search(txt):
+                if _is_section_boundary(txt):
                     end_idx = j
                     break
 
@@ -713,12 +735,21 @@ class BizPlanInjector:
             )
 
         # 4. 단락 섹션 주입
+        ok_count, fail_count = 0, 0
         for item in self.content.get("sections", []):
-            self.inject_after_keyword(
+            ok = self.inject_after_keyword(
                 keyword=item["keyword"],
                 lines=item["lines"],
                 size=item.get("size", 18),
             )
+            if ok:
+                ok_count += 1
+            else:
+                fail_count += 1
+                print(f"  ⚠️  섹션 키워드 미발견: {item['keyword']!r} — DOCX 헤딩과 불일치 가능성")
+        if fail_count:
+            print(f"  ℹ️  섹션 주입 결과: 성공 {ok_count}개 / 실패 {fail_count}개")
+            print("      --analyze 플래그로 DOCX 헤딩 텍스트를 확인하세요.")
 
         # 5. 이미지 삽입
         for item in self.content.get("images", []):

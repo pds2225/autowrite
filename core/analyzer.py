@@ -89,8 +89,21 @@ def analyze_docx(docx_path: str, verbose: bool = True) -> dict:
             print(f"  표{t['index']:02d}: {t['row_count']}행  [{sample}]")
 
         print(f"\n📝 주요 단락 (헤딩):")
-        for h in headings[:30]:
+        for h in headings[:40]:
             print(f"  [{h['index']:03d}] {h['text'][:70]}")
+
+        # 섹션 키워드 매칭 힌트 출력
+        import re
+        _kw_re = re.compile(r"\d+\s*[-–]\s*\d+")
+        matched = [(h["index"], h["text"]) for h in headings if _kw_re.search(h["text"])]
+        if matched:
+            print(f"\n🔑 섹션 키워드 후보 (content.json keyword 값으로 사용):")
+            for idx, txt in matched:
+                m = _kw_re.search(txt)
+                kw = m.group(0).strip() if m else ""
+                print(f"  [{idx:03d}] keyword={kw!r:12}  헤딩={txt[:50]!r}")
+        else:
+            print("\n⚠️  섹션 헤딩 패턴(숫자-숫자) 미탐지 — 헤딩 텍스트 직접 확인 필요")
 
     return result
 
