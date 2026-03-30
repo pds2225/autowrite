@@ -3,5 +3,21 @@ __pycache__/
 *.pyo
 .DS_Store
 /tmp/
+
+# 빌드/캐시
+.pytest_cache/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# 출력 파일 (DOCX)
 output/*.docx
-templates/*.docx
+
+# 루트에 생성되는 임시 산출물
+content_skeleton.json
+template_schema.json
+validation_report.json
+normalized_content.json
+mapping_result.json

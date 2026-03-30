@@ -160,7 +160,8 @@ def main():
     # ── 스켈레톤 생성 모드 ─────────────────────────────────────
     if args.skeleton:
         _require_file(args.skeleton, "스켈레톤 대상 파일")
-        out = args.output or "content_skeleton.json"
+        out = args.output or "output/content_skeleton.json"
+        os.makedirs("output", exist_ok=True)
         generate_content_skeleton(args.skeleton, out)
         return
 
@@ -184,7 +185,8 @@ def main():
         if args.template:
             _require_file(args.template, "템플릿 파일")
             # schema 저장 경로는 output과 독립적으로 고정
-            template_schema = generate_template_schema(args.template, "template_schema.json")
+            os.makedirs("output", exist_ok=True)
+            template_schema = generate_template_schema(args.template, "output/template_schema.json")
 
         report = validate_content(content, profile=profile, template_schema=template_schema)
 

@@ -18,7 +18,7 @@ pip install -r requirements.txt -q
 :: 주입 실행
 echo.
 echo 사업계획서 생성 중...
-python inject.py --template templates/양식.docx --content examples/content_marketgate.json --output output/사업계획서_완성.docx
+python inject.py --template templates/사업계획서_원본양식.docx --content examples/content_marketgate.json --output output/사업계획서_완성.docx
 
 echo.
 echo 완료! output 폴더를 확인하세요.
