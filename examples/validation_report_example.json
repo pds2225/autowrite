@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "errors": 0,
+    "warnings": 2,
+    "infos": 1,
+    "passed": true
+  },
+  "issues": [
+    {
+      "level": "WARNING",
+      "code": "EMPTY_SECTION",
+      "message": "내용이 비어 있는 섹션: 3-3-3",
+      "field": "sections"
+    },
+    {
+      "level": "WARNING",
+      "code": "MISSING_MARKET_SIZE",
+      "message": "시장 규모(TAM/SAM/SOM)가 없습니다.",
+      "field": "market"
+    },
+    {
+      "level": "INFO",
+      "code": "MISSING_CEO_CAREER",
+      "message": "대표자 경력 정보(ceo.career/background)가 없습니다. 심사에서 감점 요인이 될 수 있습니다.",
+      "field": "ceo"
+    }
+  ],
+  "checked_at": "2025-01-15T10:30:00"
+}
