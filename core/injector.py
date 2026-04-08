@@ -22,12 +22,19 @@ import shutil
 import os
 import copy
 import json
+import tempfile
 from lxml import etree
 
+from ._xml import WNS, NS, _w, cell_text, para_text
 
 # ── XML 네임스페이스 ──────────────────────────────────────────────
-WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-NS  = {"w": WNS}
+_WP    = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+_A     = "http://schemas.openxmlformats.org/drawingml/2006/main"
+_PIC   = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+_R_OFF = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+_RELS  = "http://schemas.openxmlformats.org/package/2006/relationships"
+_IMG_TYPE = f"{_R_OFF}/image"
+
 BLUE_COLORS = {
     "4472c4","1f3864","2e74b5","4f81bd","17375e","244185",
     "1f497d","0070c0","4f6228","538135","0000ff","blue",
@@ -39,10 +46,7 @@ _SECTION_HEADING_RE = re.compile(r"\d+\s*[-–]\s*\d+")
 
 
 # ── 저수준 XML 헬퍼 ──────────────────────────────────────────────
-def _w(tag: str) -> str:
-    """Word XML 네임스페이스가 포함된 완전한 태그명 반환. 예) 'p' → '{...}p'"""
-    return f"{{{WNS}}}{tag}"
-
+# _w / cell_text / para_text 는 core/_xml.py에서 import됨
 
 def make_run(text: str, bold: bool = False, color: str = None,
              size: int = 18, font: str = "맑은 고딕") -> etree._Element:
@@ -112,16 +116,6 @@ def make_para(text: str = "", bold: bool = False, color: str = None,
     return p
 
 
-def cell_text(cell: etree._Element) -> str:
-    """셀(<w:tc>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in cell.iter(_w("t")))
-
-
-def para_text(p: etree._Element) -> str:
-    """단락(<w:p>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in p.iter(_w("t")))
-
-
 def get_rows(tbl: etree._Element) -> list:
     """표(<w:tbl>)에서 행(<w:tr>) 목록 반환."""
     return tbl.findall(_w("tr"), NS)
@@ -130,6 +124,24 @@ def get_rows(tbl: etree._Element) -> list:
 def get_cells(row: etree._Element) -> list:
     """행(<w:tr>)에서 셀(<w:tc>) 목록 반환."""
     return row.findall(_w("tc"), NS)
+
+
+# ── 키워드 검색 헬퍼 ─────────────────────────────────────────────
+def _find_keyword_idx(body_list: list, keyword: str) -> int:
+    """
+    body_list에서 keyword를 포함한 첫 번째 <w:p> 단락의 인덱스를 반환.
+
+    Args:
+        body_list: list(body) — body 자식 요소 목록
+        keyword:   찾을 키워드 문자열
+
+    Returns:
+        인덱스 (0 이상) 또는 -1 (찾지 못한 경우)
+    """
+    for i, elem in enumerate(body_list):
+        if elem.tag == _w("p") and keyword in para_text(elem):
+            return i
+    return -1
 
 
 # ── 서식 보존 헬퍼 ───────────────────────────────────────────────
@@ -286,6 +298,8 @@ def remove_consecutive_empty_paras(body: etree._Element, max_consecutive: int = 
     """
     연속 빈 단락을 max_consecutive 개 이하로 압축.
 
+    O(n) 구현: 빈 단락 연속 카운터를 유지하며 초과분을 모아 한 번에 삭제합니다.
+
     Args:
         body:            <w:body> 요소
         max_consecutive: 허용할 최대 연속 빈 단락 수 (기본 2)
@@ -293,21 +307,18 @@ def remove_consecutive_empty_paras(body: etree._Element, max_consecutive: int = 
     Returns:
         제거된 빈 단락 수
     """
-    removed = 0
-    body_list = list(body)
-    i = 0
-    while i < len(body_list) - max_consecutive:
-        window = body_list[i:i + max_consecutive + 1]
-        if all(
-            e.tag == _w("p") and not para_text(e).strip()
-            for e in window
-        ):
-            body.remove(window[1])
-            body_list = list(body)
-            removed += 1
-            continue
-        i += 1
-    return removed
+    to_remove = []
+    run = 0
+    for elem in body:
+        if elem.tag == _w("p") and not para_text(elem).strip():
+            run += 1
+            if run > max_consecutive:
+                to_remove.append(elem)
+        else:
+            run = 0
+    for elem in to_remove:
+        body.remove(elem)
+    return len(to_remove)
 
 
 # ── 핵심 주입 클래스 ─────────────────────────────────────────────
@@ -334,7 +345,7 @@ class BizPlanInjector:
             template_path: 원본 양식 DOCX 파일 경로
         """
         self.template_path = template_path
-        self.work_dir = "/tmp/bizplan_work"
+        self.work_dir = tempfile.mkdtemp(prefix="bizplan_")
         self.content = {}
         self.tree = None
         self.root = None
@@ -349,9 +360,10 @@ class BizPlanInjector:
         self.tree, self.root, self.body, self.tables를 초기화합니다.
         이미 work_dir가 존재하면 먼저 삭제 후 재생성합니다.
         """
+        # work_dir 초기화 (재실행 시 기존 내용 클리어)
         if os.path.exists(self.work_dir):
             shutil.rmtree(self.work_dir)
-        os.makedirs(self.work_dir)
+        os.makedirs(self.work_dir, exist_ok=True)
         with zipfile.ZipFile(self.template_path, "r") as z:
             z.extractall(self.work_dir)
         xml_path = os.path.join(self.work_dir, "word/document.xml")
@@ -440,9 +452,11 @@ class BizPlanInjector:
         Args:
             table_idx:   표 인덱스
             data_rows:   행 데이터 목록.
-                         각 항목: {"cells": ["값1", ...], "aligns": ["center", ...]}
+                         각 항목: {"cells": ["값1", ...]}
+                         (서식 보존 방식으로 전환 후 "aligns" 키는 읽지 않음.
+                          기존 content.json의 aligns 배열은 무해하게 무시됩니다.)
             header_rows: 보존할 헤더 행 수 (기본 1)
-            size:        폰트 크기 (hPt 단위, 기본 18)
+            size:        폰트 크기 (hPt 단위, 기존 서식 없을 때만 적용)
         """
         t = self.get_table(table_idx)
         if t is None:
@@ -485,44 +499,34 @@ class BizPlanInjector:
             False — 키워드를 찾지 못해 주입 건너뜀
         """
         body_list = list(self.body)
-        heading_elem = None
-        heading_idx = -1
-        for i, elem in enumerate(body_list):
-            if elem.tag == _w("p") and keyword in para_text(elem):
-                heading_elem = elem
-                heading_idx = i
-                break
-        if heading_elem is None:
+        heading_idx = _find_keyword_idx(body_list, keyword)
+        if heading_idx == -1:
             return False
+        heading_elem = body_list[heading_idx]
 
-        # 다음 섹션 헤딩 또는 표까지 기존 단락 제거
+        # end_idx 탐색 + 서식 템플릿 추출을 단일 루프에서 수행
         end_idx = len(body_list)
+        template_pPr = None
+        template_rPr = None
         for j in range(heading_idx + 1, len(body_list)):
             elem = body_list[j]
             # 종료 조건 1: 표 태그
             if elem.tag == _w("tbl"):
                 end_idx = j
                 break
-            # 종료 조건 2: 다음 섹션 헤딩 단락 (숫자-숫자 패턴)  ← [버그2 수정]
             if elem.tag == _w("p"):
                 txt = para_text(elem).strip()
+                # 종료 조건 2: 다음 섹션 헤딩 단락 (숫자-숫자 패턴)
                 if txt and _SECTION_HEADING_RE.search(txt):
                     end_idx = j
                     break
-
-        # 삭제 전에 기존 내용 단락에서 서식 템플릿 추출
-        template_pPr = None
-        template_rPr = None
-        for j in range(heading_idx + 1, end_idx):
-            elem = body_list[j]
-            if elem.tag == _w("p") and para_text(elem).strip():
-                pPr, rPr = _extract_para_style(elem)
-                if template_pPr is None and pPr is not None:
-                    template_pPr = pPr
-                if template_rPr is None and rPr is not None:
-                    template_rPr = rPr
-                if template_pPr is not None and template_rPr is not None:
-                    break
+                # 서식 템플릿 수집 (첫 번째 내용 있는 단락에서 추출)
+                if txt and (template_pPr is None or template_rPr is None):
+                    pPr, rPr = _extract_para_style(elem)
+                    if template_pPr is None:
+                        template_pPr = pPr
+                    if template_rPr is None:
+                        template_rPr = rPr
 
         for elem in body_list[heading_idx + 1: end_idx]:
             if elem in list(self.body):
@@ -594,14 +598,106 @@ class BizPlanInjector:
         return output_path
 
     # ── 이미지 삽입 ─────────────────────────────────────────────
+    def _register_image_rel(self, image_path: str) -> tuple:
+        """
+        이미지 파일을 word/media/에 복사하고 document.xml.rels에 관계를 등록.
+
+        Args:
+            image_path: 원본 이미지 파일 경로
+
+        Returns:
+            (new_rid, media_name) — 등록된 관계 ID와 media 파일명
+        """
+        ext = os.path.splitext(image_path)[1].lower()
+        media_dir = os.path.join(self.work_dir, "word", "media")
+        os.makedirs(media_dir, exist_ok=True)
+
+        existing = [f for f in os.listdir(media_dir) if f.startswith("image")]
+        media_name = f"image{len(existing) + 1}{ext}"
+        shutil.copy2(image_path, os.path.join(media_dir, media_name))
+
+        rels_path = os.path.join(self.work_dir, "word", "_rels", "document.xml.rels")
+        rels_tree = etree.parse(rels_path)
+        rels_root = rels_tree.getroot()
+
+        existing_ids = [
+            int(el.get("Id", "rId0").replace("rId", "") or 0)
+            for el in rels_root
+        ]
+        new_rid = f"rId{max(existing_ids, default=0) + 1}"
+
+        rel_el = etree.SubElement(rels_root, f"{{{_RELS}}}Relationship")
+        rel_el.set("Id", new_rid)
+        rel_el.set("Type", _IMG_TYPE)
+        rel_el.set("Target", f"media/{media_name}")
+
+        with open(rels_path, "wb") as f:
+            f.write(etree.tostring(rels_tree, xml_declaration=True,
+                                   encoding="UTF-8", standalone=True))
+        return new_rid, media_name
+
+    def _build_drawing_inline(self, rid: str, cx: int, cy: int,
+                               draw_id: int) -> etree._Element:
+        """
+        <wp:inline> DrawingML 요소를 생성하여 반환.
+
+        Args:
+            rid:     이미지 관계 ID (예: "rId5")
+            cx, cy:  이미지 크기 (EMU 단위, 1cm = 914400)
+            draw_id: 문서 내 고유 드로잉 ID
+
+        Returns:
+            <wp:inline> 요소
+        """
+        inline = etree.Element(f"{{{_WP}}}inline")
+        for attr in ("distT", "distB", "distL", "distR"):
+            inline.set(attr, "0")
+
+        extent = etree.SubElement(inline, f"{{{_WP}}}extent")
+        extent.set("cx", str(cx))
+        extent.set("cy", str(cy))
+
+        doc_pr = etree.SubElement(inline, f"{{{_WP}}}docPr")
+        doc_pr.set("id", str(draw_id))
+        doc_pr.set("name", f"Image {draw_id}")
+
+        graphic = etree.SubElement(inline, f"{{{_A}}}graphic")
+        graphic_data = etree.SubElement(graphic, f"{{{_A}}}graphicData")
+        graphic_data.set("uri", _PIC)
+
+        pic_el = etree.SubElement(graphic_data, f"{{{_PIC}}}pic")
+
+        nvPicPr = etree.SubElement(pic_el, f"{{{_PIC}}}nvPicPr")
+        cNvPr = etree.SubElement(nvPicPr, f"{{{_PIC}}}cNvPr")
+        cNvPr.set("id", str(draw_id))
+        cNvPr.set("name", f"Image {draw_id}")
+        etree.SubElement(nvPicPr, f"{{{_PIC}}}cNvPicPr")
+
+        blipFill = etree.SubElement(pic_el, f"{{{_PIC}}}blipFill")
+        blip = etree.SubElement(blipFill, f"{{{_A}}}blip")
+        blip.set(f"{{{_R_OFF}}}embed", rid)
+        stretch = etree.SubElement(blipFill, f"{{{_A}}}stretch")
+        etree.SubElement(stretch, f"{{{_A}}}fillRect")
+
+        spPr = etree.SubElement(pic_el, f"{{{_PIC}}}spPr")
+        xfrm = etree.SubElement(spPr, f"{{{_A}}}xfrm")
+        off = etree.SubElement(xfrm, f"{{{_A}}}off")
+        off.set("x", "0")
+        off.set("y", "0")
+        ext_el = etree.SubElement(xfrm, f"{{{_A}}}ext")
+        ext_el.set("cx", str(cx))
+        ext_el.set("cy", str(cy))
+        prstGeom = etree.SubElement(spPr, f"{{{_A}}}prstGeom")
+        prstGeom.set("prst", "rect")
+        etree.SubElement(prstGeom, f"{{{_A}}}avLst")
+
+        return inline
+
     def inject_image(self, keyword: str, image_path: str,
                      width_cm: float = 10.0, height_cm: float = 7.0,
                      align: str = "center") -> bool:
         """
         keyword를 포함한 헤딩 단락 바로 뒤에 이미지를 삽입.
-
-        이미지를 word/media/에 복사하고, document.xml.rels에 관계를 등록한 뒤
-        <w:drawing> 요소를 body에 삽입합니다.
 
         Args:
             keyword:    헤딩 단락에서 찾을 키워드
@@ -611,104 +707,24 @@ class BizPlanInjector:
             align:      단락 정렬 ('center' | 'left' | 'right')
 
         Returns:
-            True — 키워드를 찾아 이미지 삽입 성공
-            False — 키워드를 찾지 못해 건너뜀 / 이미지 파일 없음
+            True — 성공 / False — 키워드 없음 또는 이미지 파일 없음
         """
         if not os.path.exists(image_path):
             return False
 
-        # ── 이미지 파일을 word/media/에 복사 ──
-        ext = os.path.splitext(image_path)[1].lower()  # .png / .jpg
-        media_dir = os.path.join(self.work_dir, "word", "media")
-        os.makedirs(media_dir, exist_ok=True)
+        body_list = list(self.body)
+        heading_idx = _find_keyword_idx(body_list, keyword)
+        if heading_idx == -1:
+            return False
 
-        # 기존 이미지 파일 수 세어 고유 이름 결정
-        existing = [f for f in os.listdir(media_dir) if f.startswith("image")]
-        img_num = len(existing) + 1
-        media_name = f"image{img_num}{ext}"
-        media_dest = os.path.join(media_dir, media_name)
-        shutil.copy2(image_path, media_dest)
+        new_rid, _ = self._register_image_rel(image_path)
 
-        # ── .rels 파일에 관계 추가 ──
-        rels_path = os.path.join(self.work_dir, "word", "_rels", "document.xml.rels")
-        RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
-        IMG_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
-
-        rels_tree = etree.parse(rels_path)
-        rels_root = rels_tree.getroot()
-
-        # 기존 rId 중 최대값을 구해 새 rId 할당
-        existing_ids = [
-            int(el.get("Id", "rId0").replace("rId", "") or 0)
-            for el in rels_root
-        ]
-        new_rid_num = max(existing_ids, default=0) + 1
-        new_rid = f"rId{new_rid_num}"
-
-        rel_el = etree.SubElement(rels_root, f"{{{RELS_NS}}}Relationship")
-        rel_el.set("Id", new_rid)
-        rel_el.set("Type", IMG_TYPE)
-        rel_el.set("Target", f"media/{media_name}")
-
-        with open(rels_path, "wb") as f:
-            f.write(etree.tostring(rels_tree, xml_declaration=True,
-                                   encoding="UTF-8", standalone=True))
-
-        # ── <w:drawing> 요소 생성 ──
-        # 1 cm = 914400 EMU
         cx = int(width_cm * 914400)
         cy = int(height_cm * 914400)
+        draw_id = len(self.root.findall(f".//{{{_WP}}}docPr")) + 1
 
-        # 고유 drawing id
-        existing_drawings = self.root.findall(".//{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}docPr")
-        draw_id = len(existing_drawings) + 1
+        inline = self._build_drawing_inline(new_rid, cx, cy, draw_id)
 
-        WP  = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-        A   = "http://schemas.openxmlformats.org/drawingml/2006/main"
-        PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-        R   = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-
-        inline = etree.Element(f"{{{WP}}}inline")
-        for attr, val in [("distT","0"),("distB","0"),("distL","0"),("distR","0")]:
-            inline.set(attr, val)
-
-        extent = etree.SubElement(inline, f"{{{WP}}}extent")
-        extent.set("cx", str(cx))
-        extent.set("cy", str(cy))
-
-        doc_pr = etree.SubElement(inline, f"{{{WP}}}docPr")
-        doc_pr.set("id", str(draw_id))
-        doc_pr.set("name", f"Image {draw_id}")
-
-        graphic = etree.SubElement(inline, f"{{{A}}}graphic")
-        graphic_data = etree.SubElement(graphic, f"{{{A}}}graphicData")
-        graphic_data.set("uri", PIC)
-
-        pic_el = etree.SubElement(graphic_data, f"{{{PIC}}}pic")
-
-        nvPicPr = etree.SubElement(pic_el, f"{{{PIC}}}nvPicPr")
-        cNvPr = etree.SubElement(nvPicPr, f"{{{PIC}}}cNvPr")
-        cNvPr.set("id", str(draw_id))
-        cNvPr.set("name", f"Image {draw_id}")
-        etree.SubElement(nvPicPr, f"{{{PIC}}}cNvPicPr")
-
-        blipFill = etree.SubElement(pic_el, f"{{{PIC}}}blipFill")
-        blip = etree.SubElement(blipFill, f"{{{A}}}blip")
-        blip.set(f"{{{R}}}embed", new_rid)
-        stretch = etree.SubElement(blipFill, f"{{{A}}}stretch")
-        etree.SubElement(stretch, f"{{{A}}}fillRect")
-
-        spPr = etree.SubElement(pic_el, f"{{{PIC}}}spPr")
-        xfrm = etree.SubElement(spPr, f"{{{A}}}xfrm")
-        off = etree.SubElement(xfrm, f"{{{A}}}off")
-        off.set("x", "0"); off.set("y", "0")
-        ext_el = etree.SubElement(xfrm, f"{{{A}}}ext")
-        ext_el.set("cx", str(cx)); ext_el.set("cy", str(cy))
-        prstGeom = etree.SubElement(spPr, f"{{{A}}}prstGeom")
-        prstGeom.set("prst", "rect")
-        etree.SubElement(prstGeom, f"{{{A}}}avLst")
-
-        # drawing을 감싸는 <w:p> 생성
         img_para = etree.Element(_w("p"))
         pPr = etree.SubElement(img_para, _w("pPr"))
         jc = etree.SubElement(pPr, _w("jc"))
@@ -717,19 +733,7 @@ class BizPlanInjector:
         drawing = etree.SubElement(run, _w("drawing"))
         drawing.append(inline)
 
-        # ── 헤딩 단락 위치 찾아 삽입 ──
-        body_list = list(self.body)
-        heading_idx = -1
-        for i, elem in enumerate(body_list):
-            if elem.tag == _w("p") and keyword in para_text(elem):
-                heading_idx = i
-                break
-        if heading_idx == -1:
-            return False
-
-        curr = list(self.body)
-        insert_pos = curr.index(body_list[heading_idx]) + 1
-        self.body.insert(insert_pos, img_para)
+        self.body.insert(heading_idx + 1, img_para)
         return True
 
     # ── 메인 실행 ────────────────────────────────────────────────
@@ -743,7 +747,8 @@ class BizPlanInjector:
           3. table_cells   — 개별 셀 텍스트 주입
           4. table_rows    — 표 데이터 행 전체 교체
           5. sections      — 섹션 키워드 기반 단락 내용 교체
-          6. clean         — 파란 안내문구 제거 + 빈 단락 압축
+          6. images        — 키워드 기반 이미지 삽입
+          7. clean         — 파란 안내문구 제거 + 빈 단락 압축
 
         Returns:
             {"blue_removed": int, "empty_paras_removed": int}

@@ -14,23 +14,7 @@ import os
 import json
 from lxml import etree
 
-WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-NS  = {"w": WNS}
-
-
-def _w(tag: str) -> str:
-    """Word XML 네임스페이스가 포함된 완전한 태그명 반환. 예) 'p' → '{...}p'"""
-    return f"{{{WNS}}}{tag}"
-
-
-def cell_text(cell: etree._Element) -> str:
-    """셀(<w:tc>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in cell.iter(_w("t")))
-
-
-def para_text(p: etree._Element) -> str:
-    """단락(<w:p>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in p.iter(_w("t")))
+from ._xml import WNS, NS, _w, cell_text, para_text
 
 
 def analyze_docx(docx_path: str, verbose: bool = True) -> dict:
