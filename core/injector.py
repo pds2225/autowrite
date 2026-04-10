@@ -462,6 +462,8 @@ class BizPlanInjector:
         if t is None:
             return
         rows = get_rows(t)
+        if not rows:
+            return
         # 기존 데이터 행 제거 (헤더 제외)
         for row in rows[header_rows:]:
             t.remove(row)
@@ -595,6 +597,7 @@ class BizPlanInjector:
                     fpath = os.path.join(root_dir, fname)
                     arcname = os.path.relpath(fpath, self.work_dir)
                     zout.write(fpath, arcname)
+        shutil.rmtree(self.work_dir, ignore_errors=True)
         return output_path
 
     # ── 이미지 삽입 ─────────────────────────────────────────────
@@ -620,10 +623,12 @@ class BizPlanInjector:
         rels_tree = etree.parse(rels_path)
         rels_root = rels_tree.getroot()
 
-        existing_ids = [
-            int(el.get("Id", "rId0").replace("rId", "") or 0)
-            for el in rels_root
-        ]
+        existing_ids = []
+        for el in rels_root:
+            rid_val = el.get("Id", "")
+            num_part = rid_val.replace("rId", "")
+            if num_part.isdigit():
+                existing_ids.append(int(num_part))
         new_rid = f"rId{max(existing_ids, default=0) + 1}"
 
         rel_el = etree.SubElement(rels_root, f"{{{_RELS}}}Relationship")

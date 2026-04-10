@@ -3,7 +3,12 @@ core/_xml.py
 ------------
 Word XML 공통 상수·헬퍼. injector.py · analyzer.py 양쪽에서 공유합니다.
 """
-from lxml import etree
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from lxml import etree
 
 WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 NS  = {"w": WNS}
