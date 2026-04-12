@@ -22,24 +22,10 @@ import copy
 import json
 from lxml import etree
 
-
-# ── XML 네임스페이스 ──────────────────────────────────────────────
-WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-NS  = {"w": WNS}
-BLUE_COLORS = {
-    "4472c4","1f3864","2e74b5","4f81bd","17375e","244185",
-    "1f497d","0070c0","4f6228","538135","0000ff","blue",
-    "2f5496","215868","1f5c8b",
-}
+from .xml_utils import WNS, NS, _w, para_text, cell_text, get_rows, get_cells, is_blue_run
 
 # 섹션 헤딩 패턴: "숫자-숫자" 형식 (예: 1-1, 2-3, 4-1-1)
 _SECTION_HEADING_RE = re.compile(r"\d+\s*[-–]\s*\d+")
-
-
-# ── 저수준 XML 헬퍼 ──────────────────────────────────────────────
-def _w(tag: str) -> str:
-    """Word XML 네임스페이스가 포함된 완전한 태그명 반환. 예) 'p' → '{...}p'"""
-    return f"{{{WNS}}}{tag}"
 
 
 def make_run(text: str, bold: bool = False, color: str = None,
@@ -110,26 +96,6 @@ def make_para(text: str = "", bold: bool = False, color: str = None,
     return p
 
 
-def cell_text(cell: etree._Element) -> str:
-    """셀(<w:tc>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in cell.iter(_w("t")))
-
-
-def para_text(p: etree._Element) -> str:
-    """단락(<w:p>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in p.iter(_w("t")))
-
-
-def get_rows(tbl: etree._Element) -> list:
-    """표(<w:tbl>)에서 행(<w:tr>) 목록 반환."""
-    return tbl.findall(_w("tr"), NS)
-
-
-def get_cells(row: etree._Element) -> list:
-    """행(<w:tr>)에서 셀(<w:tc>) 목록 반환."""
-    return row.findall(_w("tc"), NS)
-
-
 def set_cell_text(cell: etree._Element, text: str,
                   bold: bool = False, size: int = 18,
                   align: str = "left", color: str = None):
@@ -169,21 +135,6 @@ def set_cell_multiline(cell: etree._Element, lines: list,
 
 
 # ── 파란색 안내문구 제거 ─────────────────────────────────────────
-def is_blue_run(run: etree._Element) -> bool:
-    """
-    run(<w:r>)이 파란색 안내문구인지 판별.
-
-    BLUE_COLORS 집합에 정의된 색상 코드 중 하나와 일치하면 True 반환.
-    """
-    rPr = run.find(_w("rPr"), NS)
-    if rPr is None:
-        return False
-    color = rPr.find(_w("color"), NS)
-    if color is None:
-        return False
-    return color.get(_w("val"), "").lower() in BLUE_COLORS
-
-
 def remove_blue_runs(para: etree._Element) -> int:
     """
     단락 내 파란색 run을 모두 제거하고 제거 개수 반환.

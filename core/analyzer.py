@@ -16,23 +16,7 @@ import json
 import re
 from lxml import etree
 
-WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-NS  = {"w": WNS}
-
-
-def _w(tag: str) -> str:
-    """Word XML 네임스페이스가 포함된 완전한 태그명 반환. 예) 'p' → '{...}p'"""
-    return f"{{{WNS}}}{tag}"
-
-
-def cell_text(cell: etree._Element) -> str:
-    """셀(<w:tc>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in cell.iter(_w("t")))
-
-
-def para_text(p: etree._Element) -> str:
-    """단락(<w:p>) 내 모든 텍스트를 이어 붙여 반환."""
-    return "".join(r.text or "" for r in p.iter(_w("t")))
+from .xml_utils import WNS, NS, _w, para_text, cell_text, is_blue_run
 
 
 def analyze_docx(docx_path: str, verbose: bool = True) -> dict:
@@ -164,33 +148,33 @@ def generate_content_skeleton(docx_path: str, output_path: str = "content_skelet
 
 # 섹션 헤딩 패턴 (예: "1-1", "2-3", "3-3-3")
 _HEADING_RE = re.compile(r"^\s*(\d+\s*[-–]\s*\d+(?:\s*[-–]\s*\d+)?)")
-# 파란색 텍스트 여부 판별용 테마 색 (Word 기본 accent/theme colors)
-_BLUE_HEX = {"4472C4", "5B9BD5", "2E75B6", "1F497D", "17375E", "0070C0", "00B0F0"}
-
-
-def _is_blue_run(rpr: etree._Element) -> bool:
-    """<w:rPr>에서 파란 계열 색 여부를 확인한다."""
-    if rpr is None:
-        return False
-    color = rpr.find(_w("color"), NS)
-    if color is not None:
-        val = (color.get(f"{{{WNS}}}val") or "").upper()
-        if val in _BLUE_HEX:
-            return True
-    theme_color = rpr.find(_w("color"), NS)
-    if theme_color is not None:
-        tc = (theme_color.get(f"{{{WNS}}}themeColor") or "").lower()
-        if "accent" in tc:
-            return True
-    return False
+# placeholder 대괄호 패턴: [회사명], [대표자경력] 등
+_BRACKET_RE = re.compile(r"\[.+?\]")
 
 
 def _para_is_blue(p: etree._Element) -> bool:
-    """단락 내 첫 번째 run이 파란 색인지 확인한다."""
-    for r in p.findall(_w("r"), NS):
-        rpr = r.find(_w("rPr"), NS)
-        if _is_blue_run(rpr):
-            return True
+    """단락 내 run 중 하나라도 파란 색이면 True."""
+    return any(is_blue_run(r) for r in p.findall(_w("r"), NS))
+
+
+def _is_placeholder(text: str, is_blue: bool = False) -> bool:
+    """
+    단락이 placeholder인지 판별한다.
+
+    탐지 기준:
+      1. 파란 색 텍스트 (is_blue=True)
+      2. 대괄호 패턴: [회사명], [대표자경력]
+      3. 괄호 시작: (작성하세요...)
+      4. 한국어 안내 키워드: 작성, 입력, 기재
+    """
+    if is_blue:
+        return True
+    if _BRACKET_RE.search(text):
+        return True
+    if text.startswith("("):
+        return True
+    if re.search(r"작성|입력|기재", text):
+        return True
     return False
 
 
@@ -293,7 +277,7 @@ def generate_template_schema(
         # 본문 / placeholder 수집
         if current_kw:
             current_lines.append(txt)
-            if _para_is_blue(elem) or txt.startswith("(") or "작성" in txt or "입력" in txt:
+            if _is_placeholder(txt, is_blue=_para_is_blue(elem)):
                 has_blue = True
                 current_placeholders.append(txt[:100])
 
