@@ -20,6 +20,7 @@ content.json의 "images" 섹션에 주입할 수 있는 경로 목록을 반환�
 
 import os
 import re
+import textwrap
 
 try:
     import matplotlib
@@ -108,18 +109,6 @@ def _parse_korean_amount(s) -> float:
     return 0.0
 
 
-def _parse_revenue(s) -> float:
-    """growth_strategy.stages[].revenue 값을 억원 단위로 변환한다."""
-    return _parse_korean_amount(s)
-
-
-def _parse_budget_amount(v) -> float:
-    """budget.items[].amount 값을 억원 단위로 변환한다."""
-    if isinstance(v, (int, float)):
-        return v / 1e8
-    return _parse_korean_amount(v)
-
-
 # ── 색상 팔레트 ───────────────────────────────────────────────────
 COLORS = {
     "primary":   "#2563EB",   # blue-600
@@ -135,6 +124,15 @@ CHART_PALETTE = [
     "#2563EB", "#7C3AED", "#059669", "#D97706",
     "#DC2626", "#0891B2", "#DB2777", "#65A30D",
 ]
+
+
+# ── 차트 저장 헬퍼 ────────────────────────────────────────────────
+def _save_chart(output_path: str) -> str:
+    """현재 matplotlib figure를 저장하고 닫는다."""
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight", facecolor=COLORS["bg"])
+    plt.close()
+    return output_path
 
 
 # ── 1. TAM/SAM/SOM 차트 ───────────────────────────────────────────
@@ -190,11 +188,8 @@ def generate_market_chart(profile: dict, output_path: str) -> str:
     ax.tick_params(axis="y", colors="#1E293B", labelsize=10)
     ax.xaxis.set_tick_params(width=0)
 
-    plt.tight_layout()
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    plt.savefig(output_path, dpi=150, bbox_inches="tight", facecolor=COLORS["bg"])
-    plt.close()
-    return output_path
+    return _save_chart(output_path)
 
 
 # ── 2. 연차별 매출 차트 ───────────────────────────────────────────
@@ -223,7 +218,7 @@ def generate_revenue_chart(profile: dict, output_path: str) -> str:
         # "2026.03~2026.08" → "26.03~\n26.08" 형태로 줄바꿈
         short = period.replace("20", "")
         labels.append(f"{s.get('stage', '')}\n({short})")
-        values.append(_parse_revenue(s.get("revenue", "0")))
+        values.append(_parse_korean_amount(s.get("revenue", "0")))
 
     if all(v == 0 for v in values):
         return ""
@@ -265,11 +260,8 @@ def generate_revenue_chart(profile: dict, output_path: str) -> str:
     ax.spines[["top", "right"]].set_visible(False)
     ax.tick_params(colors=COLORS["muted"])
 
-    plt.tight_layout()
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    plt.savefig(output_path, dpi=150, bbox_inches="tight", facecolor=COLORS["bg"])
-    plt.close()
-    return output_path
+    return _save_chart(output_path)
 
 
 # ── 3. 사업비 구성 도넛 차트 ─────────────────────────────────────
@@ -296,7 +288,7 @@ def generate_budget_chart(profile: dict, output_path: str) -> str:
     category_totals: dict = {}
     for item in items:
         cat = item.get("category", "기타")
-        amt = _parse_budget_amount(item.get("amount", 0))
+        amt = _parse_korean_amount(item.get("amount", 0))
         category_totals[cat] = category_totals.get(cat, 0) + amt
 
     labels = list(category_totals.keys())
@@ -358,11 +350,8 @@ def generate_budget_chart(profile: dict, output_path: str) -> str:
     ax2.spines[["top", "right"]].set_visible(False)
     ax2.tick_params(colors=COLORS["muted"])
 
-    plt.tight_layout()
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    plt.savefig(output_path, dpi=150, bbox_inches="tight", facecolor=COLORS["bg"])
-    plt.close()
-    return output_path
+    return _save_chart(output_path)
 
 
 # ── 4. 성장 로드맵 차트 ───────────────────────────────────────────
@@ -416,14 +405,7 @@ def generate_roadmap_chart(profile: dict, output_path: str) -> str:
                 ha="center", va="bottom", fontsize=8.5, color=COLORS["muted"])
 
         # 목표 (아래) — 긴 텍스트는 줄바꿈
-        goal = s.get("goal", "")
-        if len(goal) > 14:
-            mid = len(goal) // 2
-            # 공백 근처에서 자르기
-            for k in range(mid, len(goal)):
-                if goal[k] in (" ", "+", "·", ","):
-                    goal = goal[:k] + "\n" + goal[k+1:]
-                    break
+        goal = textwrap.fill(s.get("goal", ""), width=14)
         ax.text(i, -0.42, goal, ha="center", va="top",
                 fontsize=9, color="#1E293B", linespacing=1.4)
 
@@ -446,11 +428,8 @@ def generate_roadmap_chart(profile: dict, output_path: str) -> str:
 
     ax.set_title("성장 단계별 로드맵", fontsize=13, fontweight="bold", pad=8)
 
-    plt.tight_layout()
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    plt.savefig(output_path, dpi=150, bbox_inches="tight", facecolor=COLORS["bg"])
-    plt.close()
-    return output_path
+    return _save_chart(output_path)
 
 
 # ── 통합 생성 함수 ────────────────────────────────────────────────
@@ -487,6 +466,7 @@ def generate_all_charts(
         print("      pip install matplotlib 로 설치하세요.")
         return []
 
+    os.makedirs(output_dir, exist_ok=True)
     program_type = profile.get("program_type", "초기창업패키지")
     # 양식별 섹션 키워드 매핑 (ai_writer.py SECTION_KEYWORDS와 동일)
     keyword_map = {

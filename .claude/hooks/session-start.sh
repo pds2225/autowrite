@@ -8,4 +8,3 @@ fi
 cd "${CLAUDE_PROJECT_DIR:-$(dirname "$(dirname "$(dirname "$0")")")}"
 
 pip install --quiet -r requirements.txt
-pip install --quiet flake8

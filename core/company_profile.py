@@ -58,18 +58,18 @@ def load_company_profile(path: str) -> dict:
         FileNotFoundError: 파일이 존재하지 않을 때
         ValueError: 필수 필드 누락 또는 잘못된 값
     """
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"기업정보 파일 없음: {path}")
-
     ext = os.path.splitext(path)[1].lower()
 
-    with open(path, "r", encoding="utf-8") as f:
-        if ext in (".yaml", ".yml"):
-            profile = yaml.safe_load(f)
-        elif ext == ".json":
-            profile = json.load(f)
-        else:
-            raise ValueError(f"지원하지 않는 파일 형식: {ext} (.yaml, .yml, .json만 지원)")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            if ext in (".yaml", ".yml"):
+                profile = yaml.safe_load(f)
+            elif ext == ".json":
+                profile = json.load(f)
+            else:
+                raise ValueError(f"지원하지 않는 파일 형식: {ext} (.yaml, .yml, .json만 지원)")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"기업정보 파일 없음: {path}") from None
 
     if not isinstance(profile, dict):
         raise ValueError("기업정보 파일이 올바른 dict 형식이 아닙니다")
