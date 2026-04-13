@@ -1,0 +1,56 @@
+다음 기업정보를 바탕으로 사업계획서 "3-2. 사업화 전략" 섹션을 작성해주세요.
+
+## 기업정보
+- 기업명: {company_name}
+- 아이템: {item_name}
+- 업종: {business_type}
+
+## 성장 전략
+{growth_strategy_text}
+
+## 솔루션 요약
+{solution_text}
+
+## 타겟 고객
+{target_customer}
+
+## 작성 지침
+1. 최소 600자 이상 작성
+2. 구조: Go-to-Market 전략을 Phase별로 구분
+3. 【 Phase 1 (0~6개월) 】 형태로 단계별 소제목
+4. 각 Phase별 핵심 활동, 채널, KPI 포함
+5. 마지막에 목표 KPI 요약
+6. ◦ 기호로 대주제, - 기호로 세부항목
+
+## 출력 형식 (리치 서식)
+lines 배열 항목은 str 또는 dict을 혼용할 수 있습니다.
+- 대주제: {{"text": "◦ 소제목", "bold": true, "indent": 0}}
+- Phase 헤더: {{"text": "【 Phase N 】", "bold": true, "indent": 0}}
+- 세부항목: {{"text": "- **핵심어**: 내용", "indent": 1}}
+- 빈줄: ""
+
+{{
+  "sections": [
+    {{
+      "keyword": "3-2",
+      "lines": [
+        {{"text": "◦ Go-to-Market 전략", "bold": true, "indent": 0}},
+        "",
+        {{"text": "【 Phase 1 (0~6개월): 무료 베타 + 레퍼런스 확보 】", "bold": true, "indent": 0}},
+        {{"text": "- **핵심 활동**: ...", "indent": 1}},
+        {{"text": "- **채널**: ...", "indent": 1}},
+        {{"text": "- **KPI**: ...", "indent": 1}},
+        "",
+        {{"text": "【 Phase 2 (6~12개월): 유료 전환 】", "bold": true, "indent": 0}},
+        {{"text": "- **핵심 활동**: ...", "indent": 1}},
+        {{"text": "- **목표 고객사**: ...", "indent": 1}},
+        "",
+        {{"text": "【 Phase 3 (12~24개월): 스케일업 】", "bold": true, "indent": 0}},
+        {{"text": "- **목표 KPI**: ...", "indent": 1}}
+      ],
+      "size": 18
+    }}
+  ]
+}}
+
+JSON만 출력하세요.

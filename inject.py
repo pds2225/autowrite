@@ -12,6 +12,7 @@ inject.py  —  사업계획서 자동 주입 CLI
 """
 
 import argparse
+import glob
 import json
 import re
 import sys
@@ -23,6 +24,15 @@ from core import BizPlanInjector, analyze_docx, generate_content_skeleton
 
 
 # ── 헬퍼 ──────────────────────────────────────────────────────────
+
+def _cleanup_old_docx(output_path: str) -> None:
+    """output/ 폴더의 기존 *.docx 파일을 삭제한다 (새로 저장할 파일 제외)."""
+    output_dir = os.path.dirname(output_path) or "output"
+    for f in glob.glob(os.path.join(output_dir, "*.docx")):
+        if os.path.abspath(f) != os.path.abspath(output_path):
+            os.remove(f)
+            print(f"  구버전 삭제: {f}")
+
 
 def _sanitize_filename(name: str) -> str:
     """파일명에서 Windows/Unix 모두 금지된 특수문자를 제거한다."""
@@ -89,6 +99,7 @@ def run_injection(
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)
 
+    _cleanup_old_docx(output_path)
     inj = BizPlanInjector(template_path)
     inj.load_content(content_path)
     stats = inj.run()
