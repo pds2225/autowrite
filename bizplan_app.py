@@ -10,6 +10,7 @@ import streamlit as st
 import io, re, os
 from difflib import SequenceMatcher
 from docx import Document
+from core.criteria_mapper import map_heading, UNKNOWN
 
 try:
     import mammoth; HAS_MAMMOTH = True
@@ -64,6 +65,13 @@ HEADING_RE = [
     r'^[■◆▶]\s',   r'^제\s*[0-9]+\s*[장절항]',
 ]
 
+# 템플릿의 안내문/유의사항 줄 — 매핑 대상 섹션에서 제외
+ANNOTATION_RE = re.compile(
+    r'^\s*[\*※▷◎]\s*|^\s*\(유의사항\)|재창업사업화\s*사업비|기본\s*제공한\s*질문|'
+    r'진단결과\s*도출|필요\s*시\s*항목|필요\s*시\s*칸|필요분야만\s*작성',
+    re.IGNORECASE,
+)
+
 def _is_heading(para):
     t = para.text.strip()
     if not t or len(t) > 80: return False
@@ -108,7 +116,9 @@ def extract_tmpl_sections(docx_bytes):
     secs = {}
     for p in doc.paragraphs:
         if _is_heading(p):
-            secs[p.text.strip()] = ""
+            t = p.text.strip()
+            if not ANNOTATION_RE.match(t):  # 안내문/유의사항 줄 제외
+                secs[t] = ""
     return secs
 
 
@@ -122,15 +132,40 @@ def _kw(a, b):
 
 
 def auto_match(src, tmpl):
-    """소스 섹션 → 템플릿 섹션 자동 매핑 {tmpl_h: (src_h, score)}"""
+    """소스 섹션 → 템플릿 섹션 자동 매핑 {tmpl_h: (src_h, score)}
+
+    1단계: criteria_mapper 카테고리 일치 후보끼리 비교 (정밀)
+    2단계: UNKNOWN이거나 후보 없으면 전체 소스 대상 폴백 (관대)
+    """
+    src_keys = [sh for sh in src if not sh.startswith("[표")]
+    src_cat  = {sh: map_heading(sh).category for sh in src_keys}
+    tmpl_cat = {th: map_heading(th).category for th in tmpl}
+
     used, out = set(), {}
     for th in tmpl:
+        th_cat = tmpl_cat[th]
+
+        # 1단계: 같은 카테고리 후보
+        if th_cat != UNKNOWN:
+            candidates = [sh for sh in src_keys
+                          if sh not in used and src_cat[sh] == th_cat]
+        else:
+            candidates = []
+
+        # 2단계 폴백: 카테고리 불명확하거나 후보 없음
+        if not candidates:
+            candidates = [sh for sh in src_keys if sh not in used]
+
         best, best_s = None, 0.0
-        for sh in src:
-            if sh in used or sh.startswith("[표"): continue
+        for sh in candidates:
             s = _sim(th, sh) * 0.55 + _kw(th, sh) * 0.45
-            if s > best_s: best_s = s; best = sh
-        if best and best_s >= 0.25:
+            if s > best_s:
+                best_s = s; best = sh
+
+        # 카테고리 일치 시 역치 완화 (0.15), 폴백 시 기존 역치 유지 (0.25)
+        threshold = 0.15 if (th_cat != UNKNOWN and best and
+                             src_cat.get(best) == th_cat) else 0.25
+        if best and best_s >= threshold:
             out[th] = (best, round(best_s, 2)); used.add(best)
         else:
             out[th] = (None, 0.0)
@@ -290,7 +325,9 @@ elif S.step == 2:
 
     for th, (sh, sc) in S.matches.items():
         icon = "🟢" if sc >= 0.6 else ("🟡" if sc >= 0.3 else "🔴")
-        with st.expander(f"{icon} **{th}** → {sh or '없음'} ({sc:.0%})"):
+        th_cat = map_heading(th).category
+        cat_tag = f"[{th_cat}] " if th_cat != UNKNOWN else ""
+        with st.expander(f"{icon} {cat_tag}**{th}** → {sh or '없음'} ({sc:.0%})"):
             cur_idx = src_opts.index(sh) if sh in src_opts else 0
             sel = st.selectbox("소스 섹션 선택", src_opts, index=cur_idx, key=f"m_{th}")
             if sel == "(없음)":
