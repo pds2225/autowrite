@@ -23,11 +23,25 @@ except ImportError:
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from prompts import SECTION_PROMPTS, SYSTEM_PROMPT
+try:
+    from prompts import SECTION_PROMPTS, SYSTEM_PROMPT
+except ModuleNotFoundError:
+    # inject.py 위치와 다른 디렉토리에서 실행될 때 폴백
+    _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if _root not in sys.path:
+        sys.path.insert(0, _root)
+    from prompts import SECTION_PROMPTS, SYSTEM_PROMPT  # type: ignore[import]
 
 
-# 기본 모델 설정
-DEFAULT_MODEL = "claude-sonnet-4-20250514"
+# ── 모델 설정 ──────────────────────────────────────────────────────
+# 우선순위: 환경변수 ANTHROPIC_MODEL > 코드 기본값
+# 유효 모델: claude-sonnet-4-5, claude-opus-4-5, claude-haiku-4-5-20251001
+_ENV_MODEL = os.environ.get("ANTHROPIC_MODEL", "").strip()
+_FALLBACK_MODELS = [
+    "claude-sonnet-4-5",
+    "claude-haiku-4-5-20251001",
+]
+DEFAULT_MODEL = _ENV_MODEL or _FALLBACK_MODELS[0]
 DEFAULT_MAX_TOKENS = 4096
 DEFAULT_TEMPERATURE = 0.3  # 일관적이고 전문적인 톤 유지
 

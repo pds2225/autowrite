@@ -1,4 +1,8 @@
-streamlit>=1.35.0
+lxml>=4.9.0
 python-docx>=0.8.11
+anthropic>=0.40.0
+pyyaml>=6.0
+
+# Web UI 전용
+streamlit>=1.35.0
 mammoth>=1.6.0
-anthropic>=0.28.0
