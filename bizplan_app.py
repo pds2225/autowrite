@@ -65,10 +65,27 @@ HEADING_RE = [
     r'^[■◆▶]\s',   r'^제\s*[0-9]+\s*[장절항]',
 ]
 
-# 템플릿의 안내문/유의사항 줄 — 매핑 대상 섹션에서 제외
+# 템플릿의 안내문/유의사항/서식 항목 — 매핑 대상 섹션에서 제외
 ANNOTATION_RE = re.compile(
-    r'^\s*[\*※▷◎]\s*|^\s*\(유의사항\)|재창업사업화\s*사업비|기본\s*제공한\s*질문|'
-    r'진단결과\s*도출|필요\s*시\s*항목|필요\s*시\s*칸|필요분야만\s*작성',
+    # ── 기존: 주석·안내문 기호 ──────────────────────────────
+    r'^\s*[\*※▷◎]\s*'
+    r'|^\s*\(유의사항\)'
+    r'|재창업사업화\s*사업비'
+    r'|기본\s*제공한\s*질문'
+    r'|진단결과\s*도출'
+    r'|필요\s*시\s*항목|필요\s*시\s*칸|필요분야만\s*작성'
+    # ── 신규: 별지/첨부서류 제목 ────────────────────────────
+    r'|^\[별지\s*제?\d+호\]'            # [별지 제1호], [별지 1호]
+    r'|^별지\s*제?\d+호'                # 별지 제1호 (대괄호 없는 형태)
+    # ── 신규: 서식 필드 레이블 (■ 신청기업 등) ──────────────
+    r'|^[■▪]\s*(신청기업|추천기관|기업명|대표자|소재지|연락처|이메일|홈페이지|사업자등록번호)'
+    # ── 신규: 편지 수신인 (귀하) ────────────────────────────
+    r'|귀하\s*$'                        # ~이사장 귀하, ~원장 귀하
+    # ── 신규: 법인·기관 서명란 ──────────────────────────────
+    r'|이사장\s*$|원장\s*$|센터장\s*$'  # 서명란 직책명
+    r'|\(재\)\s*\S+|재단법인\s*\S+|사단법인\s*\S+'  # (재)기관명
+    # ── 신규: 수상·투자 이력 (빈 서식 항목) ─────────────────
+    r'|수상\s*이력|투자\s*유치\s*사항',
     re.IGNORECASE,
 )
 
@@ -122,11 +139,19 @@ def extract_tmpl_sections(docx_bytes):
     return secs
 
 
-def _sim(a, b): return SequenceMatcher(None, a, b).ratio()
+def _normalize_korean(text: str) -> str:
+    """한글 자간 공백 제거 — PDF→DOCX 변환 아티팩트 처리.
+    예) '창 업 아 이 템' → '창업아이템'
+    """
+    return re.sub(r'(?<=[가-힣])\s+(?=[가-힣])', '', text)
+
+def _sim(a, b):
+    return SequenceMatcher(None, _normalize_korean(a), _normalize_korean(b)).ratio()
 
 def _kw(a, b):
-    wa = set(re.findall(r'[가-힣a-zA-Z]{2,}', a))
-    wb = set(re.findall(r'[가-힣a-zA-Z]{2,}', b))
+    na, nb = _normalize_korean(a), _normalize_korean(b)
+    wa = set(re.findall(r'[가-힣a-zA-Z]{2,}', na))
+    wb = set(re.findall(r'[가-힣a-zA-Z]{2,}', nb))
     if not wa or not wb: return 0.0
     return len(wa & wb) / max(len(wa), len(wb))
 
