@@ -31,6 +31,20 @@ DEFAULT_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_MAX_TOKENS = 4096
 DEFAULT_TEMPERATURE = 0.3  # 일관적이고 전문적인 톤 유지
 
+# 섹션 별칭 지원 (예: "4.team" 요청을 "4-1"로 매핑)
+SECTION_ALIASES = {
+    "4.team": "4-1",
+    "4-team": "4-1",
+    "team": "4-1",
+}
+
+
+def _normalize_section_id(section_id: str) -> str:
+    """섹션 별칭을 표준 섹션 ID로 정규화한다."""
+    if section_id in SECTION_PROMPTS:
+        return section_id
+    return SECTION_ALIASES.get(section_id, section_id)
+
 
 def _parse_ai_response(response_text: str) -> list:
     """
@@ -175,10 +189,12 @@ class AIWriter:
         Raises:
             ValueError: 지원하지 않는 섹션 ID
         """
+        section_id = _normalize_section_id(section_id)
+
         if section_id not in SECTION_PROMPTS:
             raise ValueError(
                 f"지원하지 않는 섹션: {section_id}. "
-                f"사용 가능: {list(SECTION_PROMPTS.keys())}"
+                f"사용 가능: {list(SECTION_PROMPTS.keys()) + list(SECTION_ALIASES.keys())}"
             )
 
         prompt_fn = SECTION_PROMPTS[section_id]
@@ -219,6 +235,8 @@ class AIWriter:
         """
         if sections is None:
             sections = list(SECTION_PROMPTS.keys())
+        else:
+            sections = [_normalize_section_id(sid) for sid in sections]
 
         results = {}
         for i, sid in enumerate(sections, 1):
@@ -271,6 +289,11 @@ class AIWriter:
                 "4-1": "4-1",
                 "4-2": "4-2",
             }
+        else:
+            sections_map = {
+                _normalize_section_id(section_id): keyword
+                for section_id, keyword in sections_map.items()
+            }
 
         # AI 콘텐츠 생성 (plain 포맷 — injector sections 호환)
         ai_content = self.generate_all_sections(
@@ -306,6 +329,7 @@ def generate_from_company_info(company_info_path: str,
                                base_content_path: str = None,
                                output_path: str = None,
                                api_key: str = None,
+                               sections: list[str] | None = None,
                                verbose: bool = True) -> dict:
     """
     기업 정보 JSON 파일로부터 사업계획서 콘텐츠를 AI 생성.
@@ -337,9 +361,14 @@ def generate_from_company_info(company_info_path: str,
         print(f"  모델: {writer.model}")
         print(f"  온도: {writer.temperature}")
 
+    sections_map = None
+    if sections:
+        sections_map = {sid: sid for sid in sections}
+
     content = writer.generate_content_json(
         company_info,
         base_content=base_content,
+        sections_map=sections_map,
         verbose=verbose,
     )
 
