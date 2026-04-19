@@ -148,6 +148,10 @@ def main():
     parser.add_argument("--api-key",           help="Anthropic API 키 (기본: ANTHROPIC_API_KEY 환경변수)")
     parser.add_argument("--model",             help="AI 모델 ID (기본: claude-sonnet-4-20250514)")
     parser.add_argument("--temperature", type=float, help="AI 생성 온도 (기본: 0.3)")
+    parser.add_argument(
+        "--sections",
+        help="생성할 섹션 목록(쉼표 구분). 예: 4.team 또는 4-1,4-2",
+    )
 
     args = parser.parse_args()
 
@@ -218,6 +222,10 @@ def main():
             json.dump(profile, f, ensure_ascii=False, indent=2)
         print(f"정규화된 프로필 저장: {norm_path}")
 
+        sections = None
+        if args.sections:
+            sections = [s.strip() for s in args.sections.split(",") if s.strip()]
+
         gen_fn = _load_ai_writer()
         out = args.generate
         os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
@@ -226,6 +234,7 @@ def main():
             base_content_path=args.base,
             output_path=out,
             api_key=args.api_key,
+            sections=sections,
             verbose=True,
         )
         return
@@ -233,6 +242,9 @@ def main():
     # ── AI 콘텐츠 생성 모드 ───────────────────────────────────
     if args.generate:
         _require_file(args.generate, "기업정보 JSON")
+        sections = None
+        if args.sections:
+            sections = [s.strip() for s in args.sections.split(",") if s.strip()]
         gen_fn = _load_ai_writer()
         out = args.output or "output/ai_content.json"
         os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
@@ -241,6 +253,7 @@ def main():
             base_content_path=args.base,
             output_path=out,
             api_key=args.api_key,
+            sections=sections,
             verbose=True,
         )
         return

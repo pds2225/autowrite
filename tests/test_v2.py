@@ -247,6 +247,14 @@ def test_get_missing_categories():
     assert TEAM in missing
 
 
+def test_ai_writer_section_alias_mapping():
+    from core.ai_writer import _normalize_section_id
+
+    assert _normalize_section_id("4.team") == "4-1"
+    assert _normalize_section_id("4-team") == "4-1"
+    assert _normalize_section_id("team") == "4-1"
+
+
 # ─────────────────────────────────────────────────────────────────
 # 9. validate_content: budget 합계 불일치
 # ─────────────────────────────────────────────────────────────────

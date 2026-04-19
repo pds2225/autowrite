@@ -32,6 +32,11 @@ python inject.py --skeleton templates/양식.docx --output content_skeleton.json
 python inject.py --template templates/양식.docx --content examples/content_marketgate.json --output output/사업계획서_완성.docx
 ```
 
+#### ⑤ AI 섹션 부분 생성 (예: 팀원 구성만)
+```bash
+python inject.py --generate examples/company_info_sample.json --sections 4.team --output output/team_only.json
+```
+
 #### ④ Windows에서 더블클릭 실행
 ```
 run.bat  (윈도우)
