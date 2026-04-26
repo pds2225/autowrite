@@ -21,3 +21,6 @@ template_schema.json
 validation_report.json
 normalized_content.json
 mapping_result.json
+
+# 환경변수
+.env

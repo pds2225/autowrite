@@ -1,0 +1,60 @@
+다음 기업정보를 바탕으로 사업계획서 "1-2. 목표시장 분석" 섹션을 작성해주세요.
+
+## 기업정보
+- 기업명: {company_name}
+- 아이템: {item_name}
+- 업종: {business_type}
+- 타겟 고객: {target_customer}
+
+## 시장 데이터
+- TAM: {tam_value} (근거: {tam_basis})
+- SAM: {sam_value} (근거: {sam_basis})
+- SOM: {som_value} (근거: {som_basis})
+
+## 경쟁사 정보
+{competitors_text}
+
+## 작성 지침
+1. 최소 600자 이상 작성
+2. 구조: 목표시장 정의 → TAM/SAM/SOM 분석 → 경쟁사 분석 → 경쟁 우위
+3. TAM-SAM-SOM은 구체적 숫자와 산출 근거를 포함
+4. 경쟁사 비교를 표 형태(| 구분 | 경쟁사1 | 경쟁사2 | 우리 |)로 작성
+5. ◦ 기호로 대주제, - 기호로 세부항목
+6. 마지막에 "→ 가격 경쟁력 + 즉시성 + 통합 서비스로 차별화" 형태 결론
+
+## 출력 형식 (리치 서식)
+lines 배열 항목은 str 또는 dict을 혼용할 수 있습니다.
+- 대주제: {{"text": "◦ 소제목", "bold": true, "indent": 0}}
+- 세부항목: {{"text": "- **핵심어** 내용", "indent": 1}}
+- 결론: {{"text": "→ 결론", "bold": true, "indent": 0}}
+- 빈줄: ""
+
+{{
+  "sections": [
+    {{
+      "keyword": "1-2",
+      "lines": [
+        {{"text": "◦ 목표시장 정의", "bold": true, "indent": 0}},
+        {{"text": "- **1차 목표**: ...", "indent": 1}},
+        "",
+        {{"text": "◦ 시장 규모 (TAM/SAM/SOM)", "bold": true, "indent": 0}},
+        {{"text": "- **TAM**: ...", "indent": 1}},
+        {{"text": "- **SAM**: ...", "indent": 1}},
+        {{"text": "- **SOM**: ...", "indent": 1}},
+        "",
+        {{"text": "◦ 경쟁사 비교", "bold": true, "indent": 0}},
+        {{"text": "- 경쟁사1: ...", "indent": 1}},
+        {{"text": "- 경쟁사2: ...", "indent": 1}},
+        "",
+        {{"text": "◦ {company_name} 경쟁 우위", "bold": true, "indent": 0}},
+        {{"text": "- 우위요소1", "indent": 1}},
+        "",
+        {{"text": "→ 결론", "bold": true, "indent": 0}}
+      ],
+      "size": 18
+    }}
+  ]
+}}
+
+keyword가 "1-2"인 경우: 양식에 따라 "1-2" 또는 "1 -2" 형태로 조정될 수 있습니다.
+JSON만 출력하세요.

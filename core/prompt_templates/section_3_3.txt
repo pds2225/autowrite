@@ -1,0 +1,55 @@
+다음 기업정보를 바탕으로 사업계획서 "3-3. 추진일정 및 자금운용" 섹션을 작성해주세요.
+
+## 기업정보
+- 기업명: {company_name}
+- 아이템: {item_name}
+
+## 예산 정보
+- 총 사업비: {budget_total}원
+- 정부지원금: {budget_government}원
+- 자기부담금: {budget_self}원
+
+## 예산 항목
+{budget_items_text}
+
+## 성장 단계
+{growth_stages_text}
+
+## 작성 지침
+1. 최소 500자 이상 작성
+2. 구조: 자금 필요성 → 정부지원 사업비 활용 계획 → 향후 자금 조달 계획
+3. 예산 항목별 금액과 용도를 구체적으로 기술
+4. 향후 투자 유치 계획(Pre-A, Series A 등) 포함
+5. ◦ 기호로 대주제, - 기호로 세부항목
+
+## 출력 형식 (리치 서식)
+lines 배열 항목은 str 또는 dict을 혼용할 수 있습니다.
+- 대주제: {{"text": "◦ 소제목", "bold": true, "indent": 0}}
+- 세부항목: {{"text": "- **항목명**: 금액 및 용도", "indent": 1}}
+- 빈줄: ""
+
+{{
+  "sections": [
+    {{
+      "keyword": "3-3",
+      "lines": [
+        {{"text": "◦ 자금 필요성", "bold": true, "indent": 0}},
+        {{"text": "- 협약기간 내 ...", "indent": 1}},
+        "",
+        {{"text": "◦ 정부지원 사업비 활용 계획 (총 {budget_government_formatted}원)", "bold": true, "indent": 0}},
+        {{"text": "- **외주용역비**: ...", "indent": 1}},
+        {{"text": "- **재료비**: ...", "indent": 1}},
+        {{"text": "- **기타**: ...", "indent": 1}},
+        "",
+        {{"text": "◦ 향후 자금 조달 계획", "bold": true, "indent": 0}},
+        {{"text": "- **1년차**: ...", "indent": 1}},
+        {{"text": "- **2년차**: ...", "indent": 1}},
+        {{"text": "- **3년차**: ...", "indent": 1}}
+      ],
+      "size": 18
+    }}
+  ]
+}}
+
+keyword는 양식에 따라 "3-3" 또는 "3-3-3"이 될 수 있습니다.
+JSON만 출력하세요.

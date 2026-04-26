@@ -1,0 +1,35 @@
+다음 기업정보를 바탕으로 사업계획서 과제개요 표의 내용을 JSON으로 생성해주세요.
+
+## 기업정보
+- 기업명: {company_name}
+- 대표자: {representative}
+- 사업자번호: {business_number}
+- 설립일: {establishment_date}
+- 창업아이템명: {item_name}
+- 사업유형: {program_type}
+- 업종: {business_type}
+
+## 솔루션 요약
+{solution_description}
+
+## 출력 형식
+아래 JSON 형식으로 정확히 출력하세요. table_cells 배열만 반환합니다.
+과제명(table 3, row 0, cell 1)에는 아이템명을 bold로, 업종(table 3, row 0, cell 3)에는 업종을 넣습니다.
+일반현황 표(table 1)에 기업 기본정보를 채웁니다.
+
+{{
+  "table_cells": [
+    {{"table": 1, "row": 0, "cell": 1, "text": "{company_name}", "size": 18}},
+    {{"table": 1, "row": 1, "cell": 1, "text": "예비창업(미등록)", "size": 18}},
+    {{"table": 1, "row": 2, "cell": 1, "text": "예비창업자", "size": 18}},
+    {{"table": 1, "row": 2, "cell": 3, "text": "단독", "size": 18}},
+    {{"table": 1, "row": 3, "cell": 1, "text": "예비창업자(미등록)", "size": 18}},
+    {{"table": 1, "row": 4, "cell": 1, "text": "서울특별시 (준비 중)", "size": 18}},
+    {{"table": 3, "row": 0, "cell": 1, "text": "{item_name}", "bold": true, "size": 20}},
+    {{"table": 3, "row": 0, "cell": 3, "text": "{business_type}", "size": 18}}
+  ]
+}}
+
+위 형식을 기반으로 하되, 기업정보에 맞게 text 값을 적절히 수정하세요.
+사업자번호나 설립일이 있으면 해당 필드도 포함하세요.
+JSON만 출력하세요.

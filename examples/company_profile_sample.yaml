@@ -1,0 +1,149 @@
+# === 기본 정보 ===
+company_name: "마켓게이트"
+representative: "박다솜"
+business_number: ""
+establishment_date: ""
+item_name: "AI·데이터 기반 수출지원 One-Stop 플랫폼"
+
+# === 사업유형 ===
+program_type: "재도전성공패키지"
+business_type: "플랫폼/SaaS"
+
+# === 문제인식 (Problem) ===
+problem:
+  background: |
+    수출 데이터 파편화, 중소기업의 낮은 AI 도입률(28.7%),
+    바이어 발굴이 수출 애로 1위(70.9%, KOTRA 2025)
+  market_need: |
+    수출 전 과정을 한 곳에서 처리하는 One-Stop 솔루션 필요
+  target_customer: "중소기업 수출기업 (연매출 10억이하)"
+
+# === 폐업이력 (재도전성공패키지 전용) ===
+closure_history:
+  - company_name: "밸류업파트너스"
+    period: "2022.11~2025.11"
+    type: "개인"
+    item: "경영컨설팅"
+    reason: "매출부진"
+    analysis: |
+      노동집약적 구조, 경험 부족 문제, 일회성 수익모델
+    improvement: |
+      SaaS 기반 자동화, AI·데이터 활용, 구독형 수익모델
+
+# === 솔루션 (Solution) ===
+solution:
+  description: |
+    수출국가 추천→바이어매칭→수익분석→계약체결까지 원스톱 플랫폼
+  features:
+    - name: "수출국가 추천"
+      detail: "품목 입력(자연어)→HS코드 매칭→제재국 필터링→추천"
+    - name: "바이어 필터링"
+      detail: "MOQ, 인증 조건 기반 적합성 높은 바이어만 선별"
+    - name: "수익성 시뮬레이션"
+      detail: "Landed Cost 기반 BEP 분석"
+    - name: "자동계약서 생성"
+      detail: "사용자 입력값으로 수출계약서 RPA 생성"
+  tech_stack: "Python, Node.js, Docker, KOTRA API"
+  development_status: "MVP 개발완료"
+  differentiators:
+    - "국가선정~계약까지 One-Stop (경쟁사는 일부 기능만)"
+    - "Hard Gate 필터링으로 수출 불가 국가 제거"
+
+# === 시장분석 ===
+market:
+  tam:
+    value: "5,370억원"
+    basis: "한국 전체 중소기업 × (구독+협력 수익)"
+  sam:
+    value: "1,644억원"
+    basis: "예상 수요 기업(연매출 10억이하 중소기업) 30,000개"
+  som:
+    value: "38억원"
+    basis: "3개년 구독고객 700개사, SAM 점유율 2.3%"
+  competitors:
+    - name: "KOTRA"
+      features: "빅데이터 기반 바이어 매칭"
+      weakness: "단순 정보 제공"
+    - name: "DeepSales"
+      features: "AI 영업 에이전트"
+      weakness: "수출 특화 아님"
+    - name: "TradeAtlas"
+      features: "AI HS코드 분석, 230개국 무역 데이터"
+      weakness: "국내 미진출"
+
+# === 비즈니스 모델 ===
+business_model:
+  revenue_streams:
+    - type: "구독료"
+      detail: "월 29만원/기업"
+      target: "중소 수출기업"
+    - type: "협력수익"
+      detail: "바이어 매칭 수수료"
+      target: "해외 바이어"
+  pricing: "월 구독 29만원"
+
+# === 성장전략 (Scale-up) ===
+growth_strategy:
+  stages:
+    - stage: "1단계"
+      period: "2026.03~2026.08"
+      goal: "MVP 고도화 + 시범 고객 확보"
+      revenue: "2.5억원"
+    - stage: "2단계"
+      period: "2026.09~2027.06"
+      goal: "정식 서비스 출시 + 유료 전환"
+      revenue: "8억원"
+    - stage: "3단계"
+      period: "2027.07~2028.12"
+      goal: "해외 시장 진출"
+      revenue: "38억원"
+
+# === 예산 ===
+budget:
+  total: 134340000
+  government: 100000000
+  self: 34340000
+  items:
+    - category: "외주용역비"
+      detail: "백엔드/프론트엔드 개발"
+      amount: 20000000
+    - category: "외주용역비"
+      detail: "UI/UX 디자인"
+      amount: 10000000
+    - category: "재료비"
+      detail: "클라우드 서버 호스팅"
+      amount: 12000000
+    - category: "인건비"
+      detail: "대표자 인건비"
+      amount: 12000000
+    - category: "광고선전비"
+      detail: "마케팅·콘텐츠 제작"
+      amount: 3000000
+    - category: "지식재산권출원비"
+      detail: "특허 2건 + 상표 2건"
+      amount: 5000000
+
+# === 팀 구성 (Team) ===
+team:
+  current:
+    - name: "박다솜"
+      role: "대표"
+      background: "경영지도사, 수출컨설팅 7년, 부산대 경영학"
+  planned:
+    - role: "백엔드 개발자"
+      timing: "2026.04"
+      requirements: "Python/Node.js, API 개발 경험"
+    - role: "데이터 분석가"
+      timing: "2026.06"
+      requirements: "머신러닝, 무역 데이터 분석"
+
+# === 기타 보유 역량 ===
+assets:
+  patents:
+    - "AI 기반 수출국가 추천 방법 (출원 중)"
+  certifications:
+    - "경영지도사"
+  partnerships: []
+  achievements:
+    - "MVP 개발 완료 (GitHub)"
+    - "KOTRA API 연동 완료"
