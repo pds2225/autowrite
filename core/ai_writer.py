@@ -46,6 +46,45 @@ def _normalize_section_id(section_id: str) -> str:
     return SECTION_ALIASES.get(section_id, section_id)
 
 
+def build_non_empty_text_content(text_or_blocks, cache_control=None) -> list:
+    """
+    Claude messages.content용 text block을 빈 문자열 없이 생성한다.
+
+    Anthropic API는 빈 text block과 빈 text block의 cache_control을 거부한다.
+    """
+    if isinstance(text_or_blocks, str):
+        raw_blocks = [{"type": "text", "text": text_or_blocks}]
+    else:
+        raw_blocks = text_or_blocks or []
+
+    content_blocks = []
+    for block in raw_blocks:
+        if isinstance(block, str):
+            text = block
+            new_block = {"type": "text", "text": text}
+        elif isinstance(block, dict) and block.get("type") == "text":
+            text = block.get("text", "")
+            new_block = dict(block)
+        else:
+            content_blocks.append(block)
+            continue
+
+        if not isinstance(text, str) or not text.strip():
+            continue
+
+        if cache_control is not None:
+            new_block["cache_control"] = cache_control
+        elif "cache_control" in new_block and not text.strip():
+            new_block.pop("cache_control", None)
+
+        content_blocks.append(new_block)
+
+    if not content_blocks:
+        raise ValueError("Claude API 요청 content가 비어 있습니다. 빈 text block은 전송할 수 없습니다.")
+
+    return content_blocks
+
+
 def _parse_ai_response(response_text: str) -> list:
     """
     AI 응답을 파싱하여 리치 포맷 라인 리스트로 변환.
@@ -199,6 +238,7 @@ class AIWriter:
 
         prompt_fn = SECTION_PROMPTS[section_id]
         user_prompt = prompt_fn(company_info)
+        content_blocks = build_non_empty_text_content(user_prompt)
 
         message = self.client.messages.create(
             model=self.model,
@@ -206,7 +246,7 @@ class AIWriter:
             temperature=self.temperature,
             system=SYSTEM_PROMPT,
             messages=[
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": content_blocks}
             ],
         )
 

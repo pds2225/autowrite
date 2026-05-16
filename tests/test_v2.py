@@ -255,6 +255,48 @@ def test_ai_writer_section_alias_mapping():
     assert _normalize_section_id("team") == "4-1"
 
 
+def test_claude_content_blocks_drop_empty_text():
+    from core.ai_writer import build_non_empty_text_content
+
+    blocks = build_non_empty_text_content([
+        {"type": "text", "text": ""},
+        {"type": "text", "text": "   ", "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": "실제 프롬프트"},
+    ])
+
+    assert blocks == [{"type": "text", "text": "실제 프롬프트"}]
+
+
+def test_claude_content_blocks_reject_empty_request():
+    from core.ai_writer import build_non_empty_text_content
+
+    with pytest.raises(ValueError, match="content가 비어 있습니다"):
+        build_non_empty_text_content([
+            {"type": "text", "text": ""},
+            {"type": "text", "text": "   "},
+        ])
+
+
+def test_claude_content_blocks_apply_cache_control_only_to_non_empty_text():
+    from core.ai_writer import build_non_empty_text_content
+
+    blocks = build_non_empty_text_content(
+        [
+            {"type": "text", "text": ""},
+            {"type": "text", "text": "본문"},
+        ],
+        cache_control={"type": "ephemeral"},
+    )
+
+    assert blocks == [
+        {
+            "type": "text",
+            "text": "본문",
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+
+
 # ─────────────────────────────────────────────────────────────────
 # 9. validate_content: budget 합계 불일치
 # ─────────────────────────────────────────────────────────────────

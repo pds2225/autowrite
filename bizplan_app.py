@@ -11,6 +11,7 @@ import io, re, os
 from difflib import SequenceMatcher
 from docx import Document
 from core.criteria_mapper import map_heading, UNKNOWN
+from core.ai_writer import build_non_empty_text_content
 
 try:
     import mammoth; HAS_MAMMOTH = True
@@ -234,6 +235,11 @@ def ai_rewrite(heading, content, api_key):
         return "API 키를 사이드바에 입력해 주세요."
     try:
         client = anthropic.Anthropic(api_key=api_key)
+        user_prompt = (
+            f"섹션명: {heading}\n\n현재 내용:\n{content or '(없음)'}\n\n"
+            "개선된 내용만 출력하세요 (섹션명 반복 불필요)."
+        )
+        content_blocks = build_non_empty_text_content(user_prompt)
         msg = client.messages.create(
             model="claude-opus-4-5",
             max_tokens=1500,
@@ -245,9 +251,7 @@ def ai_rewrite(heading, content, api_key):
                 "- ◦ - 등 불릿으로 가독성 확보\n"
                 "- 300자 이상, 과장 없이, 한국어로"
             ),
-            messages=[{"role": "user", "content":
-                f"섹션명: {heading}\n\n현재 내용:\n{content or '(없음)'}\n\n"
-                "개선된 내용만 출력하세요 (섹션명 반복 불필요)."}],
+            messages=[{"role": "user", "content": content_blocks}],
         )
         return msg.content[0].text.strip()
     except Exception as e:
