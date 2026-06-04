@@ -1,0 +1,41 @@
+INFO:     127.0.0.1:59453 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "POST /api/templates HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:60836 - "GET /templates/tpl_989439a4208c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "POST /api/projects HTTP/1.1" 303 See Other
+[WARN] Anthropic 호출 실패: Illegal header value b'sk-ant-api03-9zyECeo4fGOOY9FrtUJL3HX7fehyndnM5EmBbO7WwbI2frZMyG6lzm77KSqKru-m\n  4CFQ7Q77d8mCJ1Xrvfr8SQ-6xnUnQAA'
+[WARN] Anthropic 작성 모델(claude-opus-4-1-20250805) 실패, 기본 모델로 재시도합니다.
+[WARN] Anthropic 호출 실패: Illegal header value b'sk-ant-api03-9zyECeo4fGOOY9FrtUJL3HX7fehyndnM5EmBbO7WwbI2frZMyG6lzm77KSqKru-m\n  4CFQ7Q77d8mCJ1Xrvfr8SQ-6xnUnQAA'
+[WARN] Anthropic 호출 실패: Illegal header value b'sk-ant-api03-9zyECeo4fGOOY9FrtUJL3HX7fehyndnM5EmBbO7WwbI2frZMyG6lzm77KSqKru-m\n  4CFQ7Q77d8mCJ1Xrvfr8SQ-6xnUnQAA'
+[WARN] Anthropic 작성 모델(claude-opus-4-1-20250805) 실패, 기본 모델로 재시도합니다.
+[WARN] Anthropic 호출 실패: Illegal header value b'sk-ant-api03-9zyECeo4fGOOY9FrtUJL3HX7fehyndnM5EmBbO7WwbI2frZMyG6lzm77KSqKru-m\n  4CFQ7Q77d8mCJ1Xrvfr8SQ-6xnUnQAA'
+[WARN] Anthropic 호출 실패: Illegal header value b'sk-ant-api03-9zyECeo4fGOOY9FrtUJL3HX7fehyndnM5EmBbO7WwbI2frZMyG6lzm77KSqKru-m\n  4CFQ7Q77d8mCJ1Xrvfr8SQ-6xnUnQAA'
+[WARN] Anthropic 작성 모델(claude-opus-4-1-20250805) 실패, 기본 모델로 재시도합니다.
+[WARN] Anthropic 호출 실패: Illegal header value b'sk-ant-api03-9zyECeo4fGOOY9FrtUJL3HX7fehyndnM5EmBbO7WwbI2frZMyG6lzm77KSqKru-m\n  4CFQ7Q77d8mCJ1Xrvfr8SQ-6xnUnQAA'
+[WARN] OpenAI 호출 실패: Connection error.
+[WARN] OpenAI 웹검색 실패: Connection error.
+[WARN] OpenAI 호출 실패: Connection error.
+[WARN] OpenAI 웹검색 실패: Connection error.
+[WARN] OpenAI 호출 실패: Connection error.
+[WARN] OpenAI 호출 실패: Connection error.
+[IMG] OpenAI image generate: img_table_2_0_0.png
+[WARN] OpenAI 이미지 생성 실패: Connection error.
+[WARN] OpenAI 호출 실패: Connection error.
+[IMG] OpenAI image generate: img_table_3_0_0.png
+[WARN] OpenAI 이미지 생성 실패: Connection error.
+[WARN] OpenAI 호출 실패: Connection error.
+[IMG] OpenAI image generate: img_table_3_0_1.png
+[WARN] OpenAI 이미지 생성 실패: Connection error.
+[WARN] OpenAI 호출 실패: Connection error.
+[IMG] OpenAI image generate: img_table_4_0_0.png
+[WARN] OpenAI 이미지 생성 실패: Connection error.
+[DONE] project=prj_d3b8163bbdc8 docx=output.docx errors=3
+INFO:     127.0.0.1:60836 - "POST /projects/prj_d3b8163bbdc8/generate HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:60836 - "GET /api/projects/prj_d3b8163bbdc8/artifacts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET /projects/prj_d3b8163bbdc8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET /downloads/prj_d3b8163bbdc8/output.docx HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET /downloads/prj_d3b8163bbdc8/qa_report.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET /downloads/prj_d3b8163bbdc8/preview_manifest.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET /downloads/prj_d3b8163bbdc8/transfer_report.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60836 - "GET /preview/prj_d3b8163bbdc8/page-1.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57272 - "GET /health HTTP/1.1" 200 OK

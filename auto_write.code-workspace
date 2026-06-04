@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "name": "auto_write",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true
+    }
+  }
+}

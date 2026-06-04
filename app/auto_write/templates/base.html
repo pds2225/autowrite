@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Auto Write{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <a class="brand" href="/">Auto Write</a>
+      <p class="subtitle">지원사업 계획서 자동작성 로컬 웹앱</p>
+      <nav class="quick-nav">
+        <a href="/">홈</a>
+      </nav>
+    </div>
+    <div class="status">
+      <span class="muted">AI 연결 상태</span>
+      <span class="status-pill status-{{ ai_provider }}">{{ ai_status_text }}</span>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <section>
+        <h2>템플릿</h2>
+        {% if templates_list %}
+          <ul class="plain-list">
+            {% for item in templates_list %}
+              <li><a href="/templates/{{ item.template_id }}">{{ item.template_name }}</a></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">아직 업로드된 템플릿이 없습니다.</p>
+        {% endif %}
+      </section>
+      <section>
+        <h2>프로젝트</h2>
+        {% if projects %}
+          <ul class="plain-list">
+            {% for item in projects %}
+              <li><a href="/projects/{{ item.project_id }}">{{ item.project_name }}</a></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">아직 생성된 프로젝트가 없습니다.</p>
+        {% endif %}
+      </section>
+    </aside>
+    <section class="content">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+</body>
+</html>
