@@ -65,6 +65,11 @@ class RenderService:
         core_table_ids: set[str] | None = None,
     ) -> dict[str, Any]:
         source_docx = Path(profile.source_docx)
+        if not source_docx.is_file():
+            raise ValueError(
+                f"템플릿 원본 DOCX를 찾을 수 없습니다: {source_docx.name}. "
+                "템플릿 DOCX를 다시 업로드한 뒤 프로젝트를 새로 만드세요."
+            )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_docx, output_path)
         document = Document(str(output_path))

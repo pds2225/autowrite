@@ -26,6 +26,18 @@
   </div>
 </section>
 
+{% if not template_source_ready and template_source_warning %}
+<section class="card">
+  <p class="issue issue-error" style="margin:0;">양식 DOCX 없음 — 생성할 수 없습니다. {{ template_source_warning }}</p>
+</section>
+{% endif %}
+
+{% if generate_error %}
+<section class="card">
+  <p class="issue issue-error" style="margin:0;">{{ generate_error }}</p>
+</section>
+{% endif %}
+
 <section class="grid-3">
   <article class="card stat-card">
     <h2>문단 항목</h2>
@@ -127,7 +139,10 @@
       </div>
     </details>
 
-    <button type="submit">계획서 생성 실행</button>
+    <button type="submit" {% if not template_source_ready %}disabled aria-disabled="true"{% endif %}>계획서 생성 실행</button>
+    {% if not template_source_ready %}
+    <p class="muted">양식 DOCX가 없어 생성 버튼이 비활성화되었습니다. DOCX를 다시 업로드한 뒤 새 프로젝트를 만드세요.</p>
+    {% endif %}
   </form>
 </section>
 

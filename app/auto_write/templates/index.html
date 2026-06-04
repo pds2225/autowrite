@@ -29,6 +29,11 @@
           <li>
             <a href="/templates/{{ item.template_id }}">{{ item.template_name }}</a>
             <span class="muted">{{ item.template_id }}</span>
+            {% if item.docx_ready %}
+              <span class="chip chip-ok">DOCX 있음</span>
+            {% else %}
+              <span class="chip chip-warn">DOCX 없음·재업로드</span>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

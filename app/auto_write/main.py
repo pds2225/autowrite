@@ -43,12 +43,25 @@ app.mount("/static", StaticFiles(directory=str(settings.static_root)), name="sta
 templates = Jinja2Templates(directory=str(settings.template_view_root))
 
 
+def _templates_list_context() -> list[dict]:
+    rows: list[dict] = []
+    for profile in storage.list_template_profiles():
+        rows.append(
+            {
+                "template_id": profile.template_id,
+                "template_name": profile.template_name,
+                "docx_ready": project_service.template_docx_ready(profile),
+            }
+        )
+    return rows
+
+
 def _common_context() -> dict:
     return {
         "settings": settings,
         "ai_status_text": openai_service.status_text,
         "ai_provider": openai_service.provider,
-        "templates_list": storage.list_template_profiles(),
+        "templates_list": _templates_list_context(),
         "projects": storage.list_projects(),
         "template_accept": template_accept_value(),
         "reference_accept": reference_accept_value(),
@@ -98,7 +111,13 @@ async def upload_template(file: UploadFile = File(...)):
 @app.get("/templates/{template_id}", response_class=HTMLResponse)
 async def template_detail(request: Request, template_id: str):
     profile = project_service.normalize_profile(storage.load_template_profile(template_id))
-    context = {"request": request, "profile": profile, "profile_json": json.dumps(profile.model_dump(), ensure_ascii=False, indent=2), **_common_context()}
+    context = {
+        "request": request,
+        "profile": profile,
+        "profile_json": json.dumps(profile.model_dump(), ensure_ascii=False, indent=2),
+        "template_docx_ready": project_service.template_docx_ready(profile),
+        **_common_context(),
+    }
     return templates.TemplateResponse(request, "template_detail.html", context)
 
 
@@ -163,9 +182,13 @@ async def project_detail(request: Request, project_id: str):
             copy_blocks = raw_blocks if isinstance(raw_blocks, list) else []
         if not qa_report and (results_dir / "qa_report.json").exists():
             qa_report = _read_json_if_exists(results_dir / "qa_report.json")
+    source_status = project_service.template_source_status(profile, project_id)
     context = {
         "request": request,
         "project_id": project_id,
+        "generate_error": request.query_params.get("error", ""),
+        "template_source_ready": bool(source_status.get("ready")),
+        "template_source_warning": str(source_status.get("message", "")),
         "profile": profile,
         "project_input": project_input,
         "visible_questions": visible_questions,
@@ -249,7 +272,22 @@ async def generate_project(request: Request, project_id: str):
         )
         project_service.generate(project_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            url=f"/projects/{project_id}?error={quote(str(exc), safe='')}",
+            status_code=303,
+        )
+    except Exception as exc:
+        import logging
+        from urllib.parse import quote
+
+        logging.getLogger(__name__).exception("generate failed project=%s", project_id)
+        message = f"계획서 생성 중 오류: {exc}"
+        return RedirectResponse(
+            url=f"/projects/{project_id}?error={quote(message[:400], safe='')}",
+            status_code=303,
+        )
     return RedirectResponse(url=f"/projects/{project_id}", status_code=303)
 
 

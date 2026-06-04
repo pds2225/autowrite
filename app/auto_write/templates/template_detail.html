@@ -4,6 +4,9 @@
 <section class="card">
   <h1>{{ profile.template_name }}</h1>
   <p class="muted">template_id: {{ profile.template_id }}</p>
+  {% if not template_docx_ready %}
+  <p class="issue issue-error">원본 DOCX가 없습니다. 홈에서 동일한 양식 파일을 다시 업로드하세요.</p>
+  {% endif %}
   <p>자동 분석 결과입니다. 필요하면 아래 JSON을 수정해서 저장하세요.</p>
 </section>
 
@@ -41,7 +44,7 @@
     <label>프로젝트 이름
       <input type="text" name="project_name" placeholder="예: 2026 창업도약 사업계획서">
     </label>
-    <button type="submit">이 템플릿으로 프로젝트 생성</button>
+    <button type="submit" {% if not template_docx_ready %}disabled aria-disabled="true"{% endif %}>이 템플릿으로 프로젝트 생성</button>
   </form>
 </section>
 {% endblock %}

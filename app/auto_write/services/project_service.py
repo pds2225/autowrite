@@ -150,6 +150,7 @@ class ProjectService:
     def create_project(self, template_id: str, project_name: str) -> str:
         project_id, _ = self.storage.create_project_space(template_id, project_name or "새 프로젝트")
         profile = sanitize_template_profile(self.storage.load_template_profile(template_id))
+        profile = self._pin_template_source_to_project(profile, project_id)
         blank = ProjectInput(template_id=template_id)
         blank.project_meta = {
             "improve_partial": True,
@@ -159,6 +160,70 @@ class ProjectService:
         self.storage.save_project_input(project_id, blank)
         write_json(self.storage.project_dir(project_id) / "template_snapshot.json", profile.model_dump())
         return project_id
+
+    def _pin_template_source_to_project(self, profile: TemplateProfile, project_id: str) -> TemplateProfile:
+        """Copy template DOCX into the project folder so generation survives missing template files."""
+        try:
+            source_docx = self._resolve_source_docx(profile, project_id)
+        except ValueError:
+            return profile
+        project_dir = self.storage.project_dir(project_id)
+        pinned = project_dir / "template_source.docx"
+        if source_docx.resolve() != pinned.resolve():
+            pinned.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_docx, pinned)
+        profile.source_docx = str(pinned)
+        return profile
+
+    def template_docx_ready(self, profile: TemplateProfile) -> bool:
+        candidates: list[Path] = []
+        if profile.source_docx:
+            candidates.append(Path(profile.source_docx))
+        candidates.extend(
+            path
+            for path in sorted(self.storage.template_dir(profile.template_id).glob("*.docx"))
+            if not path.name.startswith("~$")
+        )
+        seen: set[str] = set()
+        for path in candidates:
+            key = str(path).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            if path.is_file():
+                return True
+        return False
+
+    def template_source_status(self, profile: TemplateProfile, project_id: str) -> dict[str, Any]:
+        try:
+            path = self._resolve_source_docx(profile, project_id)
+            return {"ready": True, "path": str(path), "message": ""}
+        except ValueError as exc:
+            return {"ready": False, "path": "", "message": str(exc)}
+
+    def _resolve_source_docx(self, profile: TemplateProfile, project_id: str) -> Path:
+        candidates: list[Path] = []
+        if profile.source_docx:
+            candidates.append(Path(profile.source_docx))
+        project_dir = self.storage.project_dir(project_id)
+        candidates.append(project_dir / "template_source.docx")
+        candidates.extend(sorted(project_dir.glob("*.docx")))
+        template_folder = self.storage.template_dir(profile.template_id)
+        candidates.extend(sorted(template_folder.glob("*.docx")))
+        seen: set[str] = set()
+        for path in candidates:
+            key = str(path).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            if path.is_file():
+                return path.resolve()
+        docx_name = Path(profile.source_docx).name if profile.source_docx else "(없음)"
+        raise ValueError(
+            "템플릿 원본 DOCX 파일이 없습니다. "
+            f"필요한 파일: {docx_name} | 템플릿 ID: {profile.template_id}. "
+            "홈 화면에서 동일한 양식 DOCX를 다시 업로드한 뒤, 이 프로젝트를 새로 만드세요."
+        )
 
     def save_project_form(
         self,
@@ -567,7 +632,8 @@ class ProjectService:
     def generate(self, project_id: str) -> ArtifactBundle:
         profile = self.load_profile_for_project(project_id)
         project_input = self.storage.load_project_input(project_id)
-        source_docx = Path(profile.source_docx)
+        source_docx = self._resolve_source_docx(profile, project_id)
+        profile.source_docx = str(source_docx)
         improve_partial = self._meta_flag(project_input.project_meta, "improve_partial", True)
         psst_only = self._meta_flag(project_input.project_meta, "psst_only", True)
         disable_images = self._meta_flag(project_input.project_meta, "disable_images", True)
