@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Auto Write 홈{% endblock %}
+{% block content %}
+<section class="card hero">
+  <h1>템플릿 업로드 → 핵심 입력 → 생성 결과 점검</h1>
+  <p>비개발자용 화면입니다. DOCX, HWPX, HWP 양식을 올리고, 핵심 정보와 참고자료만 입력하면 자동으로 결과 DOCX를 만듭니다.</p>
+  <div class="grid-3 mt-12">
+    <div class="step-pill">1. 템플릿 분석</div>
+    <div class="step-pill">2. 내용 생성</div>
+    <div class="step-pill">3. 품질 점검</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>1. 템플릿 업로드</h2>
+  <form action="/api/templates" method="post" enctype="multipart/form-data" class="stack">
+    <input type="file" name="file" accept="{{ template_accept }}" required>
+    <button type="submit">템플릿 분석 시작</button>
+  </form>
+  <p class="muted">DOCX는 바로 분석하고, HWPX/HWP는 분석용 DOCX로 변환한 뒤 문단 기준점(anchor), 표 빈 칸, 이미지 위치를 확인합니다.</p>
+</section>
+
+<section class="grid-2">
+  <article class="card">
+    <h2>현재 템플릿</h2>
+    {% if templates_list %}
+      <ul class="plain-list">
+        {% for item in templates_list %}
+          <li>
+            <a href="/templates/{{ item.template_id }}">{{ item.template_name }}</a>
+            <span class="muted">{{ item.template_id }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">템플릿이 없습니다.</p>
+    {% endif %}
+  </article>
+  <article class="card">
+    <h2>현재 프로젝트</h2>
+    {% if projects %}
+      <ul class="plain-list">
+        {% for item in projects %}
+          <li>
+            <a href="/projects/{{ item.project_id }}">{{ item.project_name }}</a>
+            <span class="muted">{{ item.project_id }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">프로젝트가 없습니다.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

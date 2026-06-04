@@ -1,0 +1,254 @@
+from __future__ import annotations
+
+import json
+import tempfile
+from pathlib import Path
+
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from .config import ensure_directories, get_settings
+from .autofill import build_autofill_values, merge_form_with_autofill
+from .document_ingest import (
+    is_supported_template_file,
+    reference_accept_value,
+    template_accept_value,
+    template_upload_detail,
+)
+from .services.evidence_service import EvidenceService
+from .services.image_service import ImageService
+from .services.openai_client import OpenAIService
+from .services.project_service import ProjectService
+from .services.qa_service import QAService
+from .services.render_service import RenderService
+from .storage import Storage
+from .utils import read_json
+
+settings = get_settings()
+ensure_directories(settings)
+storage = Storage(settings)
+openai_service = OpenAIService(settings)
+evidence_service = EvidenceService(openai_service)
+image_service = ImageService(openai_service)
+render_service = RenderService()
+qa_service = QAService()
+project_service = ProjectService(storage, openai_service, evidence_service, image_service, render_service, qa_service)
+
+app = FastAPI(title="Auto Write", version="0.1.0")
+app.mount("/static", StaticFiles(directory=str(settings.static_root)), name="static")
+templates = Jinja2Templates(directory=str(settings.template_view_root))
+
+
+def _common_context() -> dict:
+    return {
+        "settings": settings,
+        "ai_status_text": openai_service.status_text,
+        "ai_provider": openai_service.provider,
+        "templates_list": storage.list_template_profiles(),
+        "projects": storage.list_projects(),
+        "template_accept": template_accept_value(),
+        "reference_accept": reference_accept_value(),
+    }
+
+
+def _read_json_if_exists(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        data = read_json(path)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _upload_has_file(upload: UploadFile | object) -> bool:
+    return hasattr(upload, "filename") and hasattr(upload, "read") and bool(str(getattr(upload, "filename", "") or "").strip())
+
+
+def _extract_text_from_upload(file_name: str, content: bytes) -> str:
+    suffix = Path(file_name).suffix.lower()
+    if suffix in {".txt", ".md", ".json"}:
+        return content.decode("utf-8", errors="ignore")
+    safe_name = Path(file_name).name or f"source{suffix or '.txt'}"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        path = Path(tmp_dir) / safe_name
+        path.write_bytes(content)
+        return project_service.extract_reference_text(path)
+
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    context = {"request": request, **_common_context()}
+    return templates.TemplateResponse(request, "index.html", context)
+
+
+@app.post("/api/templates")
+async def upload_template(file: UploadFile = File(...)):
+    if not is_supported_template_file(file.filename):
+        raise HTTPException(status_code=400, detail=template_upload_detail())
+    content = await file.read()
+    profile = project_service.analyze_uploaded_template(file.filename, content)
+    return RedirectResponse(url=f"/templates/{profile.template_id}", status_code=303)
+
+
+@app.get("/templates/{template_id}", response_class=HTMLResponse)
+async def template_detail(request: Request, template_id: str):
+    profile = project_service.normalize_profile(storage.load_template_profile(template_id))
+    context = {"request": request, "profile": profile, "profile_json": json.dumps(profile.model_dump(), ensure_ascii=False, indent=2), **_common_context()}
+    return templates.TemplateResponse(request, "template_detail.html", context)
+
+
+@app.post("/api/templates/{template_id}/finalize")
+async def finalize_template(template_id: str, profile_json: str = Form(...)):
+    try:
+        project_service.finalize_template(template_id, profile_json)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(url=f"/templates/{template_id}", status_code=303)
+
+
+@app.post("/api/projects")
+async def create_project(template_id: str = Form(...), project_name: str = Form("")):
+    project_id = project_service.create_project(template_id, project_name)
+    return RedirectResponse(url=f"/projects/{project_id}", status_code=303)
+
+
+@app.get("/projects/{project_id}", response_class=HTMLResponse)
+async def project_detail(request: Request, project_id: str):
+    profile = project_service.load_profile_for_project(project_id)
+    project_input_path = storage.project_dir(project_id) / "project_input.json"
+    project_input = _read_json_if_exists(project_input_path)
+    visible_questions = project_service.visible_questions(profile)
+    hidden_question_count = max(len(profile.questions) - len(visible_questions), 0)
+    artifacts = {}
+    qa_report = {}
+    transfer_report = {}
+    artifact_dir = storage.project_dir(project_id) / "output"
+    if artifact_dir.exists():
+        for name in ("output.docx", "qa_report.json", "sources.json", "benchmark_compare.json", "transfer_report.json"):
+            path = artifact_dir / name
+            if path.exists():
+                artifacts[name] = str(path)
+        qa_path = artifact_dir / "qa_report.json"
+        transfer_path = artifact_dir / "transfer_report.json"
+        qa_report = _read_json_if_exists(qa_path)
+        transfer_report = _read_json_if_exists(transfer_path)
+    context = {
+        "request": request,
+        "project_id": project_id,
+        "profile": profile,
+        "project_input": project_input,
+        "visible_questions": visible_questions,
+        "hidden_question_count": hidden_question_count,
+        "artifacts": artifacts,
+        "qa_report": qa_report,
+        "transfer_report": transfer_report,
+        **_common_context(),
+    }
+    return templates.TemplateResponse(request, "project_detail.html", context)
+
+
+@app.post("/projects/{project_id}/generate")
+async def generate_project(request: Request, project_id: str):
+    form = await request.form()
+    reference_files = []
+    autofill_values = {}
+
+    source_file = form.get("source_file")
+    if _upload_has_file(source_file):
+        source_content = await source_file.read()
+        if source_content:
+            source_name = str(source_file.filename or "source.txt")
+            source_text = _extract_text_from_upload(source_name, source_content)
+            autofill_values = build_autofill_values(source_text)
+            # The same file is also kept as a project reference so the generated plan can cite it.
+            reference_files.append((source_name, source_content))
+
+    for value in form.getlist("reference_files"):
+        if _upload_has_file(value):
+            reference_files.append((value.filename, await value.read()))
+
+    form_core_values = {
+        "project_title": str(form.get("project_title", "")),
+        "organization_name": str(form.get("organization_name", "")),
+        "user_brief": str(form.get("user_brief", "")),
+        "user_notes": str(form.get("user_notes", "")),
+        "evidence_topics": str(form.get("evidence_topics", "")),
+    }
+    merged_core_values = merge_form_with_autofill(form_core_values, autofill_values)
+
+    answers = {}
+    for key, value in form.items():
+        if key in {
+            "project_title",
+            "organization_name",
+            "evidence_topics",
+            "source_file",
+            "reference_files",
+            "writing_provider",
+            "writing_model",
+        }:
+            continue
+        if isinstance(value, UploadFile):
+            continue
+        answers[key] = value
+    answers["user_brief"] = merged_core_values["user_brief"]
+    answers["user_notes"] = merged_core_values["user_notes"]
+    try:
+        project_service.save_project_form(
+            project_id=project_id,
+            answers=answers,
+            project_title=merged_core_values["project_title"],
+            organization_name=merged_core_values["organization_name"],
+            evidence_topics=merged_core_values["evidence_topics"],
+            reference_files=reference_files,
+            writing_provider=str(form.get("writing_provider", "")),
+            writing_model=str(form.get("writing_model", "")),
+        )
+        project_service.generate(project_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(url=f"/projects/{project_id}", status_code=303)
+
+
+@app.post("/api/projects/{project_id}/generate")
+async def generate_project_api(project_id: str):
+    try:
+        artifacts = project_service.generate(project_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return artifacts.model_dump()
+
+
+@app.get("/api/projects/{project_id}/artifacts")
+async def get_artifacts(project_id: str):
+    artifact_dir = storage.project_dir(project_id) / "output"
+    result = {}
+    for name in ("output.docx", "qa_report.json", "sources.json", "benchmark_compare.json", "transfer_report.json"):
+        path = artifact_dir / name
+        if path.exists():
+            result[name] = str(path)
+    return result
+
+
+@app.get("/downloads/{project_id}/{artifact_name}")
+async def download_artifact(project_id: str, artifact_name: str):
+    path = storage.project_dir(project_id) / "output" / artifact_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
+    return FileResponse(path=str(path), filename=artifact_name)
+
+
+@app.get("/health")
+async def health():
+    payload = {
+        "status": "ok",
+        "ai_available": openai_service.available,
+        "ai_provider": openai_service.provider,
+        "status_text": openai_service.status_text,
+    }
+    # Backward compatibility for existing clients that read old key name.
+    payload["openai_available"] = payload["ai_available"]
+    return payload

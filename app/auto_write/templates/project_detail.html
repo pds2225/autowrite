@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}프로젝트 상세{% endblock %}
+{% block content %}
+{% set ns = namespace(cell_count=0) %}
+{% for table in profile.tables %}
+  {% set ns.cell_count = ns.cell_count + (table.cells|length) %}
+{% endfor %}
+<section class="card hero">
+  <div class="split">
+    <div>
+      <h1>프로젝트 {{ project_id }}</h1>
+      <p class="muted">템플릿: {{ profile.template_name }}</p>
+      <p class="muted">핵심 정보 + 참고자료만 입력하면 자동 초안을 생성하고, 부족한 칸만 선택적으로 보정합니다.</p>
+    </div>
+    <div class="badge-wrap">
+      {% if qa_report %}
+        {% if qa_report.get('passed') %}
+          <span class="chip chip-ok">최근 생성 통과</span>
+        {% else %}
+          <span class="chip chip-warn">최근 생성 점검 필요</span>
+        {% endif %}
+      {% else %}
+        <span class="chip chip-muted">아직 생성 전</span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="grid-3">
+  <article class="card stat-card">
+    <h2>문단 항목</h2>
+    <p class="stat-value">{{ profile.sections|length }}</p>
+  </article>
+  <article class="card stat-card">
+    <h2>표 입력칸</h2>
+    <p class="stat-value">{{ ns.cell_count }}</p>
+    <p class="muted">표 {{ profile.tables|length }}개</p>
+  </article>
+  <article class="card stat-card">
+    <h2>이미지 슬롯</h2>
+    <p class="stat-value">{{ profile.image_slots|length }}</p>
+  </article>
+</section>
+
+<section class="card">
+  <h2>1) 파일 첨부 또는 핵심 입력 후 생성</h2>
+  <p class="muted">파일 하나를 먼저 첨부하면 과제명, 기관명, 사업 개요, 추가 메모, 근거 주제를 자동으로 가져옵니다. 직접 입력한 값이 있으면 직접 입력값을 우선 사용합니다.</p>
+  <p class="muted">이미 일부 작성된 사업계획서 양식(DOCX)을 올린 경우, 아래 <strong>부분 작성 양식 개선</strong>을 켜두면 ○○·00백만원·OO학 같은 미완성 칸과 약한 문장을 AI가 보완합니다.</p>
+  <p class="muted"><strong>사업 개요</strong>는 PSST 「문제 인식」에, <strong>추가 메모</strong>는 빈 줄로 나눈 뒤 순서대로 「해결·성장·팀」에 넣습니다. (메모 한 덩어리면 「해결」에만 반영)</p>
+  <form action="/projects/{{ project_id }}/generate" method="post" enctype="multipart/form-data" class="stack">
+    <label>
+      <input type="checkbox" name="improve_partial" value="on" checked>
+      부분 작성 양식 개선 (빈 칸·플레이스홀더·미완성 표 칸 보완)
+    </label>
+    <label>
+      <input type="checkbox" name="psst_only" value="on" checked>
+      PSST만 생성 (문제·해결·성장·팀 + 핵심 표, ○ 불릿 본문 제외)
+    </label>
+    <label>
+      <input type="checkbox" name="disable_images" value="on" checked>
+      이미지 생성 안 함 (HWP 붙여넣기·양식 정합 우선)
+    </label>
+    <label>0) 자동 입력용 파일 첨부 (선택)
+      <input type="file" name="source_file" accept="{{ reference_accept }}">
+      <span class="muted">상담메모, 공고문, 회사소개서, 기존 사업계획서, TXT/MD/JSON 파일을 첨부하면 아래 입력칸을 자동 보완합니다.</span>
+    </label>
+
+    <div class="grid-2">
+      <label>과제명
+        <input type="text" name="project_title" value="{{ project_input.get('project_meta', {}).get('project_title', '') }}" placeholder="비워두면 첨부파일에서 자동 추출">
+      </label>
+      <label>기관명 또는 회사명
+        <input type="text" name="organization_name" value="{{ project_input.get('organization_profile', {}).get('name', '') }}" placeholder="비워두면 첨부파일에서 자동 추출">
+      </label>
+    </div>
+
+    <label>사업 개요
+      <textarea name="user_brief" rows="5" placeholder="무슨 사업인지, 어떤 문제를 해결하는지, 왜 지금 필요한지 핵심만 적어주세요.">{{ project_input.get('answers', {}).get('user_brief', '') }}</textarea>
+    </label>
+    <label>추가 메모
+      <textarea name="user_notes" rows="4" placeholder="강점, 실적, 일정, 예산, 팀 구성, 차별점 등을 자유롭게 적어주세요. 빈 줄로 나누면 해결·성장·팀에 순서대로 들어갑니다.">{{ project_input.get('answers', {}).get('user_notes', '') }}</textarea>
+    </label>
+
+    {% if visible_questions %}
+    <details class="panel">
+      <summary>2) 세부 입력 직접 수정 {{ visible_questions|length }}건{% if hidden_question_count %} · 숨김 {{ hidden_question_count }}건{% endif %}</summary>
+      <div class="grid-2 mt-12">
+      {% for question in visible_questions %}
+        <label>
+          {{ question.label }}
+          {% if question.field_type == 'textarea' %}
+          <textarea name="{{ question.question_id }}" rows="4">{{ project_input.get('answers', {}).get(question.question_id, '') }}</textarea>
+          {% else %}
+          <input type="text" name="{{ question.question_id }}" value="{{ project_input.get('answers', {}).get(question.question_id, '') }}">
+          {% endif %}
+          <span class="muted">{{ question.source_hint }}</span>
+        </label>
+      {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+
+    <label>3) 검색이 필요한 통계/근거 주제
+      <textarea name="evidence_topics" rows="5" placeholder="한 줄에 하나씩 입력하세요. 예: 국내 스마트제조 시장 규모&#10;희망리턴패키지 수혜기업 통계">{% for item in project_input.get('evidence_requests', []) %}{{ item.get('topic', '') }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
+    </label>
+
+    <label>4) 참고자료 업로드 (DOCX, HWPX, HWP, PDF, TXT, MD, JSON)
+      <input type="file" name="reference_files" multiple accept="{{ reference_accept }}">
+    </label>
+
+    <details class="panel">
+      <summary>5) 본문 작성 모델 선택 (선택사항)</summary>
+      <div class="grid-2 mt-12">
+        <label>작성 제공자
+          <select name="writing_provider">
+            {% set selected_provider = project_input.get('project_meta', {}).get('writing_provider', '') %}
+            <option value="" {% if not selected_provider %}selected{% endif %}>자동(기본)</option>
+            <option value="anthropic" {% if selected_provider == 'anthropic' %}selected{% endif %}>Claude</option>
+            <option value="openai" {% if selected_provider == 'openai' %}selected{% endif %}>OpenAI</option>
+          </select>
+          <span class="muted">자동은 시스템 기본 경로를 사용합니다.</span>
+        </label>
+        <label>작성 모델명
+          <input type="text" name="writing_model" value="{{ project_input.get('project_meta', {}).get('writing_model', '') }}" placeholder="예: claude-opus-4-1-20250805">
+          <span class="muted">비워두면 제공자의 기본 모델을 사용합니다.</span>
+        </label>
+      </div>
+    </details>
+
+    <button type="submit">계획서 생성 실행</button>
+  </form>
+</section>
+
+{% if generation_summary %}
+<section class="card">
+  <h2>생성 안내 (한글 요약)</h2>
+  <pre class="summary-box">{{ generation_summary }}</pre>
+</section>
+{% endif %}
+
+{% if qa_report %}
+<section class="grid-2">
+  <article class="card">
+    <h2>최근 생성 점검</h2>
+      <div class="meta-grid">
+        <div><span class="muted">오류</span><strong>{{ qa_report.get('error_count', 0) }}</strong></div>
+        <div><span class="muted">경고</span><strong>{{ qa_report.get('warning_count', 0) }}</strong></div>
+        <div><span class="muted">문단 쓰기</span><strong>{{ qa_report.get('summary', {}).get('sections_written', 0) }}</strong></div>
+        <div><span class="muted">표 셀 쓰기</span><strong>{{ qa_report.get('summary', {}).get('cells_written', 0) }}</strong></div>
+        <div><span class="muted">미리보기 페이지</span><strong>{{ qa_report.get('summary', {}).get('preview_pages', 0) }}</strong></div>
+      </div>
+    {% if qa_report.get('errors') %}
+    <ul class="plain-list mt-12">
+      {% for issue in qa_report.get('errors', [])[:6] %}
+      <li class="issue issue-error">{{ issue }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if qa_report.get('warnings') %}
+    <ul class="plain-list mt-12">
+      {% for issue in qa_report.get('warnings', [])[:6] %}
+      <li class="issue issue-warn">{{ issue }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <h2>전환 품질 지표</h2>
+    {% if transfer_report %}
+      <div class="meta-grid">
+        <div><span class="muted">모드</span><strong>{{ transfer_report.get('mode', '-') }}</strong></div>
+        <div><span class="muted">문단 채움률</span><strong>{{ ((transfer_report.get('fill_ratio', {}).get('sections', 0) or 0) * 100)|round(1) }}%</strong></div>
+        <div><span class="muted">표 채움률(문서)</span><strong>{{ ((transfer_report.get('fill_ratio', {}).get('table_cells_document', 0) or 0) * 100)|round(1) }}%</strong></div>
+        <div><span class="muted">출처 수집</span><strong>{{ transfer_report.get('evidence_usage', {}).get('sources_collected', 0) }}</strong></div>
+      </div>
+    {% else %}
+      <p class="muted">아직 전환 리포트가 없습니다.</p>
+    {% endif %}
+  </article>
+</section>
+{% endif %}
+
+{% if hwp_paste_text or copy_blocks %}
+<section class="card">
+  <h2>HWP 붙여넣기 · 섹션별 복사</h2>
+  <p class="muted">결과 폴더: <code>{{ results_folder }}</code></p>
+  {% if hwp_paste_text %}
+  <label class="mt-12">전체 붙여넣기용 (hwp_paste.txt)
+    <textarea id="hwp-paste-all" class="copy-area" rows="14" readonly>{{ hwp_paste_text }}</textarea>
+  </label>
+  <button type="button" class="copy-btn" data-copy-target="hwp-paste-all">전체 복사</button>
+  {% endif %}
+  {% if copy_blocks %}
+  <div class="copy-blocks mt-12">
+    {% for block in copy_blocks %}
+    <article class="copy-block">
+      <div class="copy-block-head">
+        <strong>{{ block.title }}</strong>
+        <button type="button" class="copy-btn" data-copy-target="copy-block-{{ loop.index }}">복사</button>
+      </div>
+      <textarea id="copy-block-{{ loop.index }}" class="copy-snippet" rows="4" readonly>{{ block.text }}</textarea>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if preview_manifest and preview_manifest.get('pages') %}
+<section class="card">
+  <h2>문서 페이지 미리보기</h2>
+  <p class="muted">생성 직후 렌더링한 화면입니다. 표 깨짐, 잘림, 빈칸이 없는지 바로 확인할 수 있습니다.</p>
+  <div class="grid-2">
+    {% for page_name in preview_manifest.get('pages', [])[:4] %}
+    <a class="artifact-link" href="/preview/{{ project_id }}/{{ page_name }}" target="_blank">
+      <span>{{ page_name }}</span>
+      <span class="muted">새 창에서 보기</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>생성 결과 파일 (results)</h2>
+  <p class="muted">실사용 파일은 <strong>results</strong> 폴더에 저장됩니다. 날짜가 붙은 DOCX·HWP용 TXT를 우선 사용하세요.</p>
+  {% if results_artifacts %}
+    <div class="grid-2">
+      {% for name, path in results_artifacts.items() %}
+      <a class="artifact-link" href="/downloads/{{ project_id }}/{{ name }}">
+        <span>{{ name }}</span>
+        <span class="muted">다운로드</span>
+      </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">아직 results 폴더에 저장된 결과가 없습니다. 위에서 「계획서 생성 실행」을 눌러 주세요.</p>
+  {% endif %}
+</section>
+
+{% if artifacts %}
+<section class="card">
+  <h2>작업 폴더 (output)</h2>
+  <div class="grid-2">
+    {% for name, path in artifacts.items() %}
+    <a class="artifact-link" href="/downloads/{{ project_id }}/{{ name }}">
+      <span>{{ name }}</span>
+      <span class="muted">다운로드</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<script>
+(function () {
+  function copyText(text, button) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(function () {
+      var prev = button.textContent;
+      button.textContent = "복사됨";
+      setTimeout(function () { button.textContent = prev; }, 1500);
+    }).catch(function () {
+      alert("복사에 실패했습니다. 텍스트 영역을 직접 선택해 Ctrl+C 하세요.");
+    });
+  }
+  document.querySelectorAll(".copy-btn").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var targetId = button.getAttribute("data-copy-target");
+      if (targetId) {
+        var el = document.getElementById(targetId);
+        copyText(el ? el.value : "", button);
+        return;
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

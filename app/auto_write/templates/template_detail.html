@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}템플릿 상세{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>{{ profile.template_name }}</h1>
+  <p class="muted">template_id: {{ profile.template_id }}</p>
+  <p>자동 분석 결과입니다. 필요하면 아래 JSON을 수정해서 저장하세요.</p>
+</section>
+
+<section class="grid-2">
+  <article class="card">
+    <h2>문단 위치</h2>
+    <ul class="plain-list">
+      {% for section in profile.sections %}
+        <li>{{ section.label }}<br><span class="muted">{{ section.anchor_text }}</span></li>
+      {% endfor %}
+    </ul>
+  </article>
+  <article class="card">
+    <h2>이미지 위치</h2>
+    <ul class="plain-list">
+      {% for slot in profile.image_slots %}
+        <li>{{ slot.label }}<br><span class="muted">{{ slot.anchor_type }} / {{ slot.anchor_ref }}</span></li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+
+<section class="card">
+  <h2>JSON 수정</h2>
+  <form action="/api/templates/{{ profile.template_id }}/finalize" method="post" class="stack">
+    <textarea name="profile_json" rows="28" class="code">{{ profile_json }}</textarea>
+    <button type="submit">수정 내용 저장</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>프로젝트 만들기</h2>
+  <form action="/api/projects" method="post" class="stack">
+    <input type="hidden" name="template_id" value="{{ profile.template_id }}">
+    <label>프로젝트 이름
+      <input type="text" name="project_name" placeholder="예: 2026 창업도약 사업계획서">
+    </label>
+    <button type="submit">이 템플릿으로 프로젝트 생성</button>
+  </form>
+</section>
+{% endblock %}
