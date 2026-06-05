@@ -17,10 +17,12 @@
 from __future__ import annotations
 
 import re
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 from docx import Document
+from docx.text.paragraph import Paragraph
 
 from .docx_ops import set_cell_text
 
@@ -130,6 +132,35 @@ class SubmittableFiller:
                     report["overview_filled"] += 1
                     break
 
+    def _apply_paragraph_fills(self, doc, report) -> None:
+        """본문 가이드 문구(예: 'ㅇ ... 세부내용 작성')를 실제 내용 + 하위 불릿으로 교체.
+
+        profile에 섹션으로 잡히지 않아 도구가 채우지 못한 본문(예: 5. AI 인재활용 계획)을
+        앵커 문단 기준으로 채운다. 첫 줄은 앵커 문단에 기록하고, 나머지 줄은 동일 서식의
+        새 문단으로 앵커 바로 뒤에 순서대로 삽입한다.
+        """
+        for fill in self.plan.get("paragraph_fills") or []:
+            anchor = self._norm(fill.get("anchor", ""))
+            lines = [str(line) for line in (fill.get("lines") or []) if str(line).strip()]
+            if not anchor or not lines:
+                continue
+            target = None
+            for paragraph in doc.paragraphs:
+                if self._norm(paragraph.text) == anchor:
+                    target = paragraph
+                    break
+            if target is None:
+                report["notes"].append(f"본문 앵커 미발견: {anchor[:30]}")
+                continue
+            self._set_paragraph_text(target, lines[0])
+            cursor = target
+            for line in lines[1:]:
+                new_p = deepcopy(cursor._p)
+                cursor._p.addnext(new_p)
+                cursor = Paragraph(new_p, cursor._parent)
+                self._set_paragraph_text(cursor, line)
+            report["paragraphs_filled"] += 1
+
     def _apply_row_rewrites(self, doc, report) -> None:
         for rw in self.plan.get("row_rewrites") or []:
             ti = int(rw.get("table_index", -1))
@@ -233,11 +264,13 @@ class SubmittableFiller:
             "replacements": 0,
             "residual_cleaned": 0,
             "guides_blanked": 0,
+            "paragraphs_filled": 0,
             "notes": [],
         }
         doc = Document(str(input_docx))
         self._fill_identity(doc, report)
         self._fill_overview(doc, report)
+        self._apply_paragraph_fills(doc, report)
         self._apply_row_rewrites(doc, report)
         self._apply_replacements(doc, report)
         self._blank_guides(doc, report)
