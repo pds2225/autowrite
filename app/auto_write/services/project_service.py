@@ -793,6 +793,17 @@ class ProjectService:
                 return matches[-1]
         return None
 
+    _PREVIEW_TOOL_MISSING_RE = re.compile(
+        r"(ModuleNotFoundError|ImportError|No module named|cannot import name|"
+        r"pdf2image|poppler|pdfinfo|DLL load failed)",
+        re.IGNORECASE,
+    )
+
+    @classmethod
+    def _preview_failure_is_tool_unavailable(cls, output: str) -> bool:
+        """미리보기 렌더러가 자체 의존성(pdf2image/poppler 등) 부재로 실행조차 못했는지 판별한다."""
+        return bool(cls._PREVIEW_TOOL_MISSING_RE.search(str(output or "")))
+
     def _render_docx_previews(self, docx_path: Path, preview_dir: Path) -> dict[str, Any]:
         result: dict[str, Any] = {
             "status": "skipped",
@@ -845,9 +856,19 @@ class ProjectService:
                 result["warnings"].append(stderr_text[:240])
             return result
 
-        result["status"] = "failed"
         stdout_text = (completed.stdout or "").strip()
         stderr_text = (completed.stderr or "").strip()
+        if self._preview_failure_is_tool_unavailable(f"{stdout_text}\n{stderr_text}"):
+            # 렌더러가 추가 구성요소(pdf2image/poppler 등) 부재로 실행 자체가 불가한 경우는
+            # 문서 결함이 아니라 도구 부재이므로 '건너뜀(경고)'으로 처리한다. 문서는 정상이다.
+            result["status"] = "skipped"
+            result["warnings"].append(
+                "미리보기 렌더러의 추가 구성요소(pdf2image/poppler 등)가 없어 "
+                "DOCX 화면 검수를 건너뛰었습니다. 문서 자체는 정상 생성되었습니다."
+            )
+            return result
+
+        result["status"] = "failed"
         if stdout_text:
             result["errors"].append(stdout_text[:240])
         if stderr_text:
@@ -907,7 +928,7 @@ class ProjectService:
             for next_text in paragraphs[index + 1 : index + 6]:
                 if next_text in anchor_to_field:
                     break
-                if next_text.startswith("□") or SECTION_HEADING_RE.match(next_text):
+                if next_text.startswith("□") or self.SECTION_HEADING_RE.match(next_text):
                     break
                 body_parts.append(next_text)
             body = "\n".join(body_parts).strip()
