@@ -96,7 +96,11 @@ class RenderService:
 
         section_count = 0
         for section in profile.sections:
-            if psst_only and psst_field_ids is not None and section.field_id not in psst_field_ids:
+            # psst_only는 PSST 핵심 섹션만 렌더링하도록 제한하지만, 그런 섹션이 실제로
+            # 감지됐을 때만 적용해야 한다. psst_field_ids가 비어 있으면 템플릿에 PSST
+            # 제목이 없다는 뜻이므로, 사용자가 입력한 내용을 누락시키지 않도록 채워진
+            # 모든 섹션을 렌더링한다(_restrict_autofill_targets의 동작과 일치).
+            if psst_only and psst_field_ids and section.field_id not in psst_field_ids:
                 continue
             value = str(answers.get(section.field_id, "") or "").strip()
             if not value:
@@ -111,7 +115,9 @@ class RenderService:
 
         cell_count = 0
         for table in profile.tables:
-            if psst_only and core_table_ids is not None and table.table_id not in core_table_ids:
+            # 섹션과 동일한 graceful degradation: 핵심 표가 감지되지 않으면
+            # 채워진 표 셀을 억제하지 않는다.
+            if psst_only and core_table_ids and table.table_id not in core_table_ids:
                 continue
             table_index = table.table_index
             for cell in table.cells:
