@@ -30,3 +30,5 @@ workspace/
 results/
 app/tmp_e2e_downloads/
 .pytest_cache/
+.omc/
+.bkit/
