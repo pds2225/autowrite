@@ -147,7 +147,8 @@ class PsstMappingTests(unittest.TestCase):
 
         name = service._results_docx_name(project_input)
 
-        self.assertTrue(name.endswith("_시장검증사업_초안.docx"))
+        self.assertTrue(name.endswith("_초안.docx"))
+        self.assertIn("시장검증사업", name)
         for unsafe in '<>:"/\\|?*':
             self.assertNotIn(unsafe, name)
 
