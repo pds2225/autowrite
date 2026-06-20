@@ -3,6 +3,18 @@
 > **사업계획서 DOCX 자동 주입 도구**  
 > 원본 양식 서식을 그대로 유지하면서, JSON 파일 하나로 모든 내용을 자동 채워넣습니다.
 
+## 현재 개발 문서
+
+이 저장소의 현재 웹 앱은 `app/` 아래 **Auto Write**입니다. FastAPI 화면, PSST 초안 생성, results 폴더, HWP 붙여넣기 워크플로우는 `app/README.md`를 기준으로 확인하세요.
+
+- 실행 진입점: `launch.bat`
+- 웹 앱 모듈: `app/auto_write/main.py`
+- 생성/결과 발행 서비스: `app/auto_write/services/project_service.py`
+- 런타임 작업 폴더: `app/workspace`
+- 실사용 결과 폴더: `results`
+
+아래 내용은 루트 `inject.py` 기반의 레거시 DOCX 주입 CLI 참고 문서입니다.
+
 ---
 
 ## 🚀 빠른 시작
