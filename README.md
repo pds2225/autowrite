@@ -1,3 +1,15 @@
+> ## ⚠️ 이 레포는 `auto_write` 로 통합되었습니다
+>
+> 레포 중복 정리 결과, 이 레포의 핵심 `app/auto_write/` 웹 패키지는 후속 레포
+> **[`pds2225/auto_write`](https://github.com/pds2225/auto_write)** 가 상위호환으로 포함하고 있습니다.
+> 이 레포의 고유 자산인 **BizPlan Injector**(`inject.py`·`bizplan_app.py`·`core/`·`prompts/`·
+> `examples/`·`references/`·`templates/`)는 `auto_write` 의 `tools/injector/` 로 이전되었습니다.
+> 자세한 분석은 `auto_write` 의 `REPO_DUPLICATION_CHECK.md` 를 참고하세요.
+>
+> 신규 작업은 `auto_write` 에서 진행하세요. 아래 문서는 이전 상태 보존용입니다.
+
+---
+
 # 📄 BizPlan Injector
 
 > **사업계획서 DOCX 자동 주입 도구**  
